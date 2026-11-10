@@ -240,18 +240,23 @@ namespace Vibespaces {
       IntPtr h = Window(processId, title);
       if (h == IntPtr.Zero) return "no window titled '" + title + "'";
       if (where == "maximized") { ShowWindow(h, 3); if (raise) Raise(h); return "maximized"; }
-      double share, from = 0; string side;
+      // each spot: where it starts and how much it takes, across and down, as shares of the work area
+      double x0, xs, y0 = 0, ys = 1;
       switch (where) {
-        case "second-quarter": side = "from"; from = 0.25; share = 0.25; break;
-        case "third-quarter": side = "from"; from = 0.5; share = 0.25; break;
-        case "middle-third": side = "from"; from = 1.0 / 3; share = 1.0 / 3; break;
-        case "left-quarter": side = "left"; share = 0.25; break;
-        case "left-third": side = "left"; share = 1.0 / 3; break;
-        case "left-half": side = "left"; share = 0.5; break;
-        case "right-half": side = "right"; share = 0.5; break;
-        case "right-third": side = "right"; share = 1.0 / 3; break;
-        case "right-quarter": side = "right"; share = 0.25; break;
-        case "center": side = "center"; share = 0.6; break;
+        case "left-quarter": x0 = 0; xs = 0.25; break;
+        case "second-quarter": x0 = 0.25; xs = 0.25; break;
+        case "third-quarter": x0 = 0.5; xs = 0.25; break;
+        case "right-quarter": x0 = 0.75; xs = 0.25; break;
+        case "left-third": x0 = 0; xs = 1.0 / 3; break;
+        case "middle-third": x0 = 1.0 / 3; xs = 1.0 / 3; break;
+        case "right-third": x0 = 2.0 / 3; xs = 1.0 / 3; break;
+        case "left-half": x0 = 0; xs = 0.5; break;
+        case "right-half": x0 = 0.5; xs = 0.5; break;
+        case "center": x0 = 0.2; xs = 0.6; break;
+        case "top-left": x0 = 0; xs = 0.5; ys = 0.5; break;
+        case "top-right": x0 = 0.5; xs = 0.5; ys = 0.5; break;
+        case "bottom-left": x0 = 0; xs = 0.5; y0 = 0.5; ys = 0.5; break;
+        case "bottom-right": x0 = 0.5; xs = 0.5; y0 = 0.5; ys = 0.5; break;
         default: return "unknown position '" + where + "'";
       }
       if (IsZoomed(h) || IsIconic(h)) ShowWindow(h, 9);                          // SW_RESTORE
@@ -259,10 +264,9 @@ namespace Vibespaces {
       GetMonitorInfo(MonitorFromWindow(h, 2), ref mi);                           // MONITOR_DEFAULTTONEAREST
       RECT wa = mi.rcWork;
       int W = wa.Right - wa.Left, H = wa.Bottom - wa.Top;
-      int w = (int)Math.Round(W * share);
-      int x = side == "left" ? wa.Left : side == "right" ? wa.Right - w
-        : side == "from" ? wa.Left + (int)Math.Round(W * from) : wa.Left + (W - w) / 2;
-      int y = wa.Top, height = H;
+      // edges from rounded shares, so neighbouring spots meet exactly
+      int x = wa.Left + (int)Math.Round(W * x0), w = wa.Left + (int)Math.Round(W * (x0 + xs)) - x;
+      int y = wa.Top + (int)Math.Round(H * y0), height = wa.Top + (int)Math.Round(H * (y0 + ys)) - y;
       RECT win, frame;
       GetWindowRect(h, out win);
       if (DwmGetWindowAttribute(h, 9, out frame, Marshal.SizeOf(typeof(RECT))) == 0) {   // DWMWA_EXTENDED_FRAME_BOUNDS

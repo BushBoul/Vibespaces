@@ -274,21 +274,27 @@ window.addEventListener('keydown', (e) => {
 });
 
 // ---- pictures for the screen spots ----
+// [left, right, top, bottom] as shares of the screen
 const SPOT = { 'left-quarter': [0, .25], 'second-quarter': [.25, .5], 'third-quarter': [.5, .75], 'right-quarter': [.75, 1],
   'left-third': [0, 1 / 3], 'middle-third': [1 / 3, 2 / 3], 'right-third': [2 / 3, 1],
-  'left-half': [0, .5], center: [.2, .8], 'right-half': [.5, 1], maximized: [0, 1] };
+  'left-half': [0, .5], center: [.2, .8], 'right-half': [.5, 1], maximized: [0, 1],
+  'top-left': [0, .5, 0, .5], 'top-right': [.5, 1, 0, .5], 'bottom-left': [0, .5, .5, 1], 'bottom-right': [.5, 1, .5, 1] };
 function spotSvg(id) {
   const frame = '<rect x="1" y="1" width="54" height="30" rx="3" fill="none" stroke="currentColor" stroke-opacity=".55"/>'
     + '<rect x="1" y="31" width="54" height="4" rx="1" fill="currentColor" fill-opacity=".25"/>';
   let inner = '';
-  if (SPOT[id]) { const [a, b] = SPOT[id]; inner = '<rect x="' + (3 + a * 50) + '" y="3" width="' + ((b - a) * 50) + '" height="26" rx="2" fill="currentColor" fill-opacity=".6"/>'; }
+  if (SPOT[id]) {
+    const [a, b, t = 0, u = 1] = SPOT[id];
+    inner = '<rect x="' + (3 + a * 50) + '" y="' + (3 + t * 26) + '" width="' + ((b - a) * 50) + '" height="' + ((u - t) * 26) + '" rx="2" fill="currentColor" fill-opacity=".6"/>';
+  }
   else if (id === 'custom') inner = '<rect x="9" y="6" width="22" height="20" rx="2" fill="currentColor" fill-opacity=".6"/>';
   else inner = '<path d="M22 12 l12 10 M34 12 l-12 10" stroke="currentColor" stroke-opacity=".45" stroke-width="1.5"/>';
   return '<svg viewBox="0 0 56 36" aria-hidden="true">' + frame + inner + '</svg>';
 }
 const SPOT_LABEL = { '': 'Not set', 'left-quarter': 'Quarter 1', 'second-quarter': 'Quarter 2', 'third-quarter': 'Quarter 3',
   'right-quarter': 'Quarter 4', 'left-third': 'Left third', 'middle-third': 'Middle third', 'right-third': 'Right third',
-  'left-half': 'Left half', center: 'Centre', 'right-half': 'Right half', maximized: 'Full screen', custom: 'Where I saved it' };
+  'left-half': 'Left half', center: 'Centre', 'right-half': 'Right half', 'top-left': 'Top left', 'top-right': 'Top right',
+  'bottom-left': 'Bottom left', 'bottom-right': 'Bottom right', maximized: 'Full screen', custom: 'Where I saved it' };
 
 // ---- segmented buttons ----
 function setSeg(el, v) { el.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === v)); }
@@ -383,7 +389,7 @@ function render() {
   $('spotField').classList.toggle('off', !st.windows);
   const w = o.window, cur = !w ? '' : w.preset || 'custom';
   const ids = ['', 'left-quarter', 'second-quarter', 'third-quarter', 'right-quarter', 'left-third', 'middle-third', 'right-third',
-    'left-half', 'center', 'right-half', 'maximized'].concat(cur === 'custom' ? ['custom'] : []);
+    'left-half', 'center', 'right-half', 'top-left', 'top-right', 'bottom-left', 'bottom-right', 'maximized'].concat(cur === 'custom' ? ['custom'] : []);
   $('spots').innerHTML = ids.map((id) => '<button class="tile' + (id === cur ? ' on' : '') + '" data-spot="' + id + '">' + spotSvg(id) + '<span>' + SPOT_LABEL[id] + '</span></button>').join('');
   $('winPos').textContent = cur === 'custom' ? (w.maximized ? 'saved: maximized' : 'saved: ' + w.width + ' × ' + w.height + ' at ' + w.x + ', ' + w.y) : '';
   $('winSave').disabled = !st.isCurrent;

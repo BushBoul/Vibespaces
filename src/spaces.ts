@@ -42,6 +42,10 @@ export const WINDOW_PRESETS = [
   { id: 'left-half', label: 'Left half' },
   { id: 'center', label: 'Centre' },
   { id: 'right-half', label: 'Right half' },
+  { id: 'top-left', label: 'Top-left quarter of the screen' },
+  { id: 'top-right', label: 'Top-right quarter of the screen' },
+  { id: 'bottom-left', label: 'Bottom-left quarter of the screen' },
+  { id: 'bottom-right', label: 'Bottom-right quarter of the screen' },
   { id: 'maximized', label: 'Full screen (maximized)' },
 ] as const;
 export type WindowPreset = typeof WINDOW_PRESETS[number]['id'];
