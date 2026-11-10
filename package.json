@@ -2,7 +2,7 @@
   "name": "vibespaces",
   "displayName": "Vibespaces",
   "description": "One window per project: its own colour, its own taskbar button, one click to open.",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "publisher": "bushboul",
   "private": true,
   "license": "MIT",

@@ -6,6 +6,7 @@
 //   snap:     put the window in a preset spot (left-quarter, right-third, center, maximized...) on its screen
 //   raise:    bring the window up above the others (-Raise does it with place and snap too; -Activate also focuses it)
 //   hotkey:   hold a system-wide shortcut and print "hotkey" each time it's pressed, until -OwnerPid exits
+//   pins:     point the saved taskbar pins of -AppId at -Icon (identify does this too)
 //   icon:     make a space's .ico
 // Built by tools/build-helper.js with the C# compiler that ships with Windows (.NET Framework 4, C# 5).
 using System;
@@ -34,6 +35,7 @@ namespace Vibespaces {
           case "place": r = Placement.Place(n("ProcessId"), s("Title"), n("X"), n("Y"), n("Width"), n("Height"), on("Maximize"), on("Raise"), on("Activate")); break;
           case "snap": r = Placement.Snap(n("ProcessId"), s("Title"), s("Where"), on("Raise"), on("Activate")); break;
           case "raise": r = Placement.RaiseWindow(n("ProcessId"), s("Title"), on("Activate")); break;
+          case "pins": r = "updated " + Pins.Update(s("AppId"), s("Icon")) + " pin(s)"; break;
           case "hotkey": return Hotkey.Listen((uint)n("Mods"), (uint)n("Key"), n("OwnerPid"));
           case "icon": r = Icons.Make(s("Style") == "" ? "window" : s("Style"), s("Color"), s("Text"), s("Source"), s("Out")); break;
           default: Console.Error.WriteLine("unknown action '" + s("Action") + "'"); return 1;

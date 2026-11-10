@@ -35,6 +35,73 @@ namespace Vibespaces {
     [PreserveSig] int Commit();
   }
 
+  [ComImport, Guid("000214F9-0000-0000-C000-000000000046"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  interface IShellLinkW {
+    [PreserveSig] int GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder f, int cch, IntPtr fd, uint flags);
+    [PreserveSig] int GetIDList(out IntPtr pidl);
+    [PreserveSig] int SetIDList(IntPtr pidl);
+    [PreserveSig] int GetDescription([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder s, int cch);
+    [PreserveSig] int SetDescription([MarshalAs(UnmanagedType.LPWStr)] string s);
+    [PreserveSig] int GetWorkingDirectory([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder s, int cch);
+    [PreserveSig] int SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string s);
+    [PreserveSig] int GetArguments([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder s, int cch);
+    [PreserveSig] int SetArguments([MarshalAs(UnmanagedType.LPWStr)] string s);
+    [PreserveSig] int GetHotkey(out short k);
+    [PreserveSig] int SetHotkey(short k);
+    [PreserveSig] int GetShowCmd(out int c);
+    [PreserveSig] int SetShowCmd(int c);
+    [PreserveSig] int GetIconLocation([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder s, int cch, out int idx);
+    [PreserveSig] int SetIconLocation([MarshalAs(UnmanagedType.LPWStr)] string s, int idx);
+    [PreserveSig] int SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string s, uint r);
+    [PreserveSig] int Resolve(IntPtr hwnd, uint flags);
+    [PreserveSig] int SetPath([MarshalAs(UnmanagedType.LPWStr)] string s);
+  }
+  [ComImport, Guid("00021401-0000-0000-C000-000000000046")] class CShellLink { }
+
+  // A pinned space keeps the icon it was pinned with: Windows saves a shortcut for the pin and reuses it when the
+  // same taskbar id is pinned again. So when a space's icon changes, the saved pins with its id get the new icon.
+  public static class Pins {
+    [DllImport("ole32.dll")] static extern int PropVariantClear(ref PropVariant v);
+    [DllImport("shell32.dll")] static extern void SHChangeNotify(int e, uint flags, IntPtr a, IntPtr b);
+
+    // icon: "path" or "path,index"; returns how many pins it changed
+    public static int Update(string appId, string icon) {
+      string path = icon; int index = 0;
+      int comma = icon.LastIndexOf(',');
+      if (comma > 0 && int.TryParse(icon.Substring(comma + 1), out index)) path = icon.Substring(0, comma);
+      string root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), @"Microsoft\Internet Explorer\Quick Launch\User Pinned");
+      if (!Directory.Exists(root)) return 0;
+      int n = 0;
+      foreach (string f in Directory.GetFiles(root, "*.lnk", SearchOption.AllDirectories)) {
+        object o = null;
+        try {
+          o = new CShellLink();
+          ((System.Runtime.InteropServices.ComTypes.IPersistFile)o).Load(f, 2);     // STGM_READWRITE
+          IPropertyStore ps = (IPropertyStore)o;
+          PropertyKey k = new PropertyKey(new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), 5);   // PKEY_AppUserModel_ID
+          PropVariant v;
+          if (ps.GetValue(ref k, out v) != 0) continue;
+          string id = v.vt == 31 ? Marshal.PtrToStringUni(v.ptr) : null;
+          PropVariantClear(ref v);
+          if (id != appId) continue;
+          IShellLinkW l = (IShellLinkW)o;
+          StringBuilder sb = new StringBuilder(1024); int had;
+          l.GetIconLocation(sb, sb.Capacity, out had);
+          if (string.Equals(sb.ToString(), path, StringComparison.OrdinalIgnoreCase) && had == index) continue;
+          l.SetIconLocation(path, index);
+          ((System.Runtime.InteropServices.ComTypes.IPersistFile)o).Save(f, true);
+          n++;
+        } catch {
+          // a shortcut we can't read or write is left alone
+        } finally {
+          if (o != null) Marshal.ReleaseComObject(o);
+        }
+      }
+      if (n > 0) SHChangeNotify(0x08000000, 0, IntPtr.Zero, IntPtr.Zero);   // SHCNE_ASSOCCHANGED: icons changed
+      return n;
+    }
+  }
+
   public static class Taskbar {
     delegate bool EnumProc(IntPtr h, IntPtr l);
     [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc f, IntPtr l);
@@ -60,10 +127,12 @@ namespace Vibespaces {
         if (h == IntPtr.Zero) Thread.Sleep(500);
       }
       if (h == IntPtr.Zero) return "no window titled '" + title + "' in process " + processId;
+      int pins = Pins.Update(appId, icon);
+      string pinNote = pins > 0 ? " (updated " + pins + " pin" + (pins == 1 ? "" : "s") + ")" : "";
       IPropertyStore s = Store(h);
       try {
         string had = Get(s, ID);
-        if (had == appId && !force) return "already " + appId;
+        if (had == appId && !force) return "already " + appId + pinNote;
         Set(s, RELAUNCH_COMMAND, command);
         Set(s, RELAUNCH_ICON, icon);
         Set(s, RELAUNCH_NAME, name);
@@ -73,7 +142,7 @@ namespace Vibespaces {
         Marshal.ReleaseComObject(s);
       }
       Rebutton(h);
-      return "set " + appId + " on window " + h;
+      return "set " + appId + " on window " + h + pinNote;
     }
 
     // The visible window of processId whose title is the space's name, or starts with it (window.title puts it first).
