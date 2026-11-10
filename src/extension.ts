@@ -248,6 +248,11 @@ async function runOnOpen(space: Space, layoutOnly = false, taskbarDone?: Promise
     await run(`open ${p.label}`, p.command, ...(p.args ?? []));
   }
 
+  // An assistant that opens as a tab (Claude Code) opens beside the current editor, which can leave the first editor
+  // pane empty: fold the panes into one when one of them has nothing in it.
+  const groups = vscode.window.tabGroups.all;
+  if (groups.length > 1 && groups.some((g) => g.tabs.length === 0)) await run('join editor panes', 'workbench.action.joinAllGroups');
+
   const L = o.layout;
   if (L.left === 'show') await run('show left side bar', 'workbench.action.focusSideBar');
   if (L.left === 'hide') await run('hide left side bar', 'workbench.action.closeSidebar');
