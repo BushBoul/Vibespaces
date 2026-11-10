@@ -2,7 +2,7 @@
   "name": "vibespaces",
   "displayName": "Vibespaces",
   "description": "One window per project: its own colour, its own taskbar button, one click to open.",
-  "version": "0.11.2",
+  "version": "0.12.0",
   "publisher": "bushboul",
   "private": true,
   "license": "MIT",
@@ -666,12 +666,15 @@
                   "type": "string",
                   "enum": [
                     "left-quarter",
+                    "second-quarter",
+                    "third-quarter",
+                    "right-quarter",
                     "left-third",
+                    "middle-third",
+                    "right-third",
                     "left-half",
                     "center",
                     "right-half",
-                    "right-third",
-                    "right-quarter",
                     "maximized"
                   ],
                   "description": "A spot on the screen the window is on; when set, x/y/width/height are not used"
@@ -781,12 +784,15 @@
                       "type": "string",
                       "enum": [
                         "left-quarter",
+                        "second-quarter",
+                        "third-quarter",
+                        "right-quarter",
                         "left-third",
+                        "middle-third",
+                        "right-third",
                         "left-half",
                         "center",
                         "right-half",
-                        "right-third",
-                        "right-quarter",
                         "maximized"
                       ]
                     }

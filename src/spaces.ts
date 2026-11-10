@@ -33,12 +33,15 @@ export interface OnOpen {
 
 export const WINDOW_PRESETS = [
   { id: 'left-quarter', label: 'Left column, narrow (a quarter of the screen)' },
+  { id: 'second-quarter', label: 'Second quarter from the left' },
+  { id: 'third-quarter', label: 'Third quarter from the left' },
+  { id: 'right-quarter', label: 'Right column, narrow (a quarter of the screen)' },
   { id: 'left-third', label: 'Left column (a third of the screen)' },
+  { id: 'middle-third', label: 'Middle third' },
+  { id: 'right-third', label: 'Right column (a third of the screen)' },
   { id: 'left-half', label: 'Left half' },
   { id: 'center', label: 'Centre' },
   { id: 'right-half', label: 'Right half' },
-  { id: 'right-third', label: 'Right column (a third of the screen)' },
-  { id: 'right-quarter', label: 'Right column, narrow (a quarter of the screen)' },
   { id: 'maximized', label: 'Full screen (maximized)' },
 ] as const;
 export type WindowPreset = typeof WINDOW_PRESETS[number]['id'];

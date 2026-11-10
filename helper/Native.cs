@@ -240,8 +240,11 @@ namespace Vibespaces {
       IntPtr h = Window(processId, title);
       if (h == IntPtr.Zero) return "no window titled '" + title + "'";
       if (where == "maximized") { ShowWindow(h, 3); if (raise) Raise(h); return "maximized"; }
-      double share; string side;
+      double share, from = 0; string side;
       switch (where) {
+        case "second-quarter": side = "from"; from = 0.25; share = 0.25; break;
+        case "third-quarter": side = "from"; from = 0.5; share = 0.25; break;
+        case "middle-third": side = "from"; from = 1.0 / 3; share = 1.0 / 3; break;
         case "left-quarter": side = "left"; share = 0.25; break;
         case "left-third": side = "left"; share = 1.0 / 3; break;
         case "left-half": side = "left"; share = 0.5; break;
@@ -257,7 +260,8 @@ namespace Vibespaces {
       RECT wa = mi.rcWork;
       int W = wa.Right - wa.Left, H = wa.Bottom - wa.Top;
       int w = (int)Math.Round(W * share);
-      int x = side == "left" ? wa.Left : side == "right" ? wa.Right - w : wa.Left + (W - w) / 2;
+      int x = side == "left" ? wa.Left : side == "right" ? wa.Right - w
+        : side == "from" ? wa.Left + (int)Math.Round(W * from) : wa.Left + (W - w) / 2;
       int y = wa.Top, height = H;
       RECT win, frame;
       GetWindowRect(h, out win);
