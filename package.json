@@ -1,0 +1,839 @@
+{
+  "name": "vibespaces",
+  "displayName": "Vibespaces",
+  "description": "One window per project: its own colour, its own taskbar button, one click to open.",
+  "version": "0.11.0",
+  "publisher": "bushboul",
+  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BushBoul/Vibespaces.git"
+  },
+  "bugs": {
+    "url": "https://github.com/BushBoul/Vibespaces/issues"
+  },
+  "homepage": "https://github.com/BushBoul/Vibespaces#readme",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "icon": "media/icon.png",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "vibespaces.open",
+        "title": "Open a Space…",
+        "category": "Vibespaces",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "vibespaces.create",
+        "title": "New Space…",
+        "category": "Vibespaces",
+        "icon": "$(add)"
+      },
+      {
+        "command": "vibespaces.fromWindow",
+        "title": "Make This Window a Space…",
+        "category": "Vibespaces",
+        "icon": "$(window)"
+      },
+      {
+        "command": "vibespaces.edit",
+        "title": "Edit Space…",
+        "category": "Vibespaces",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "vibespaces.editThis",
+        "title": "Edit This Space",
+        "category": "Vibespaces",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "vibespaces.resetLayout",
+        "title": "Reset to This Space’s Layout",
+        "category": "Vibespaces",
+        "icon": "$(home)"
+      },
+      {
+        "command": "vibespaces.saveWindowPosition",
+        "title": "Remember This Window’s Position",
+        "category": "Vibespaces"
+      },
+      {
+        "command": "vibespaces.setColor",
+        "title": "Change Colour…",
+        "category": "Vibespaces"
+      },
+      {
+        "command": "vibespaces.rename",
+        "title": "Rename…",
+        "category": "Vibespaces"
+      },
+      {
+        "command": "vibespaces.delete",
+        "title": "Delete Space…",
+        "category": "Vibespaces"
+      },
+      {
+        "command": "vibespaces.editFile",
+        "title": "Edit Space File as Text",
+        "category": "Vibespaces"
+      },
+      {
+        "command": "vibespaces.refresh",
+        "title": "Refresh",
+        "category": "Vibespaces",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "vibespaces.fixTaskbar",
+        "title": "Give This Window Its Own Taskbar Button",
+        "category": "Vibespaces"
+      },
+      {
+        "command": "vibespaces.reapplyColors",
+        "title": "Repaint All Spaces",
+        "category": "Vibespaces"
+      },
+      {
+        "command": "vibespaces.walkthrough",
+        "title": "How Vibespaces Works",
+        "category": "Vibespaces",
+        "icon": "$(question)"
+      },
+      {
+        "command": "vibespaces.openSpace",
+        "title": "Open",
+        "category": "Vibespaces"
+      },
+      {
+        "category": "Vibespaces",
+        "command": "vibespaces.newGroup",
+        "title": "New Group…",
+        "icon": "$(add)"
+      },
+      {
+        "category": "Vibespaces",
+        "command": "vibespaces.openGroup",
+        "title": "Open Group",
+        "icon": "$(play)"
+      },
+      {
+        "category": "Vibespaces",
+        "command": "vibespaces.homeGroup",
+        "title": "Put This Group Back in Place",
+        "icon": "$(home)"
+      },
+      {
+        "category": "Vibespaces",
+        "command": "vibespaces.homeAll",
+        "title": "Put Every Open Space Back in Place"
+      },
+      {
+        "category": "Vibespaces",
+        "command": "vibespaces.editGroup",
+        "title": "Choose Spaces…"
+      },
+      {
+        "category": "Vibespaces",
+        "command": "vibespaces.renameGroup",
+        "title": "Rename Group…"
+      },
+      {
+        "category": "Vibespaces",
+        "command": "vibespaces.deleteGroup",
+        "title": "Delete Group…"
+      },
+      {
+        "category": "Vibespaces",
+        "command": "vibespaces.memberSpot",
+        "title": "Where It Goes in This Group…"
+      },
+      {
+        "category": "Vibespaces",
+        "command": "vibespaces.removeMember",
+        "title": "Remove from Group"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "vibespaces",
+          "title": "Vibespaces",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "vibespaces": [
+        {
+          "id": "vibespaces.list",
+          "name": "Spaces"
+        },
+        {
+          "id": "vibespaces.groups",
+          "name": "Groups"
+        },
+        {
+          "id": "vibespaces.settings",
+          "name": "Settings",
+          "type": "webview",
+          "visibility": "collapsed"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "vibespaces.list",
+        "contents": "No spaces yet. A space is a project that opens in its own coloured window, with its own taskbar button.\n[Make This Window a Space](command:vibespaces.fromWindow)\n[New Space…](command:vibespaces.create)\nNew to this? [See how Vibespaces works](command:vibespaces.walkthrough)."
+      },
+      {
+        "view": "vibespaces.groups",
+        "contents": "A group is a few spaces that work side by side, each in its spot on the screen. Open them together, and put them all back with Ctrl+Alt+Shift+Home.\n[New Group…](command:vibespaces.newGroup)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "vibespaces.editThis",
+          "when": "view == vibespaces.list && vibespaces.isSpace",
+          "group": "navigation@0"
+        },
+        {
+          "command": "vibespaces.resetLayout",
+          "when": "view == vibespaces.list && vibespaces.isSpace",
+          "group": "navigation@0"
+        },
+        {
+          "command": "vibespaces.fromWindow",
+          "when": "view == vibespaces.list && !vibespaces.isSpace && workspaceFolderCount > 0",
+          "group": "navigation@0"
+        },
+        {
+          "command": "vibespaces.create",
+          "when": "view == vibespaces.list",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vibespaces.refresh",
+          "when": "view == vibespaces.list",
+          "group": "navigation@2"
+        },
+        {
+          "command": "vibespaces.fromWindow",
+          "when": "view == vibespaces.list",
+          "group": "1_make"
+        },
+        {
+          "command": "vibespaces.reapplyColors",
+          "when": "view == vibespaces.list",
+          "group": "2_tools"
+        },
+        {
+          "command": "vibespaces.walkthrough",
+          "when": "view == vibespaces.list",
+          "group": "3_help"
+        },
+        {
+          "command": "vibespaces.newGroup",
+          "when": "view == vibespaces.groups",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vibespaces.homeGroup",
+          "when": "view == vibespaces.groups",
+          "group": "navigation@0"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "vibespaces.edit",
+          "when": "view == vibespaces.list && viewItem =~ /^space/",
+          "group": "inline"
+        },
+        {
+          "command": "vibespaces.openSpace",
+          "when": "view == vibespaces.list && viewItem == space",
+          "group": "1_open@1"
+        },
+        {
+          "command": "vibespaces.edit",
+          "when": "view == vibespaces.list && viewItem =~ /^space/",
+          "group": "2_edit@1"
+        },
+        {
+          "command": "vibespaces.setColor",
+          "when": "view == vibespaces.list && viewItem =~ /^space/",
+          "group": "2_edit@2"
+        },
+        {
+          "command": "vibespaces.rename",
+          "when": "view == vibespaces.list && viewItem =~ /^space/",
+          "group": "2_edit@3"
+        },
+        {
+          "command": "vibespaces.editFile",
+          "when": "view == vibespaces.list && viewItem =~ /^space/",
+          "group": "3_file@1"
+        },
+        {
+          "command": "vibespaces.delete",
+          "when": "view == vibespaces.list && viewItem =~ /^space/",
+          "group": "9_delete@1"
+        },
+        {
+          "command": "vibespaces.openGroup",
+          "when": "view == vibespaces.groups && viewItem == group",
+          "group": "inline@1"
+        },
+        {
+          "command": "vibespaces.homeGroup",
+          "when": "view == vibespaces.groups && viewItem == group",
+          "group": "inline@2"
+        },
+        {
+          "command": "vibespaces.openGroup",
+          "when": "view == vibespaces.groups && viewItem == group",
+          "group": "1_open@1"
+        },
+        {
+          "command": "vibespaces.homeGroup",
+          "when": "view == vibespaces.groups && viewItem == group",
+          "group": "1_open@2"
+        },
+        {
+          "command": "vibespaces.editGroup",
+          "when": "view == vibespaces.groups && viewItem == group",
+          "group": "2_edit@1"
+        },
+        {
+          "command": "vibespaces.renameGroup",
+          "when": "view == vibespaces.groups && viewItem == group",
+          "group": "2_edit@2"
+        },
+        {
+          "command": "vibespaces.deleteGroup",
+          "when": "view == vibespaces.groups && viewItem == group",
+          "group": "9_delete@1"
+        },
+        {
+          "command": "vibespaces.memberSpot",
+          "when": "view == vibespaces.groups && viewItem == member",
+          "group": "1_edit@1"
+        },
+        {
+          "command": "vibespaces.removeMember",
+          "when": "view == vibespaces.groups && viewItem == member",
+          "group": "9_delete@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "vibespaces.fixTaskbar",
+          "when": "isWindows"
+        },
+        {
+          "command": "vibespaces.openSpace",
+          "when": "false"
+        },
+        {
+          "command": "vibespaces.refresh",
+          "when": "false"
+        },
+        {
+          "command": "vibespaces.editThis",
+          "when": "vibespaces.isSpace"
+        },
+        {
+          "command": "vibespaces.resetLayout",
+          "when": "vibespaces.isSpace"
+        },
+        {
+          "command": "vibespaces.saveWindowPosition",
+          "when": "vibespaces.isSpace && isWindows"
+        },
+        {
+          "command": "vibespaces.memberSpot",
+          "when": "false"
+        },
+        {
+          "command": "vibespaces.removeMember",
+          "when": "false"
+        },
+        {
+          "command": "vibespaces.homeGroup",
+          "when": "isWindows"
+        },
+        {
+          "command": "vibespaces.homeAll",
+          "when": "isWindows"
+        }
+      ]
+    },
+    "walkthroughs": [
+      {
+        "id": "vibespaces.start",
+        "title": "Get started with Vibespaces",
+        "description": "Give each project its own coloured window and taskbar button.",
+        "steps": [
+          {
+            "id": "what",
+            "title": "What a space is",
+            "description": "A space is one of your projects, set up to open in its own VS Code window with its own colour.\n[Show the Vibespaces list](command:workbench.view.extension.vibespaces)",
+            "media": {
+              "markdown": "media/walkthrough/what.md"
+            },
+            "completionEvents": [
+              "onCommand:workbench.view.extension.vibespaces",
+              "onView:vibespaces.list"
+            ]
+          },
+          {
+            "id": "make",
+            "title": "Make your first space",
+            "description": "Open your project folder in VS Code (File > Open Folder…), then turn the window into a space.\n[Make This Window a Space](command:vibespaces.fromWindow)\nOr pick any folder: [New Space…](command:vibespaces.create)",
+            "media": {
+              "markdown": "media/walkthrough/make.md"
+            },
+            "completionEvents": [
+              "onCommand:vibespaces.fromWindow",
+              "onCommand:vibespaces.create"
+            ]
+          },
+          {
+            "id": "switch",
+            "title": "Switch between spaces",
+            "description": "Click a space in the Vibespaces list, or the space name at the bottom left of the window.\n[Open a Space](command:vibespaces.open)",
+            "media": {
+              "markdown": "media/walkthrough/switch.md"
+            },
+            "completionEvents": [
+              "onCommand:vibespaces.open",
+              "onCommand:vibespaces.openSpace"
+            ]
+          },
+          {
+            "id": "pin",
+            "title": "Pin a space to the taskbar",
+            "description": "Each space has its own button on the Windows taskbar. Right-click it and choose Pin to taskbar: from then on, that pin opens the space.",
+            "media": {
+              "markdown": "media/walkthrough/pin.md"
+            },
+            "completionEvents": [
+              "onStepSelected"
+            ],
+            "when": "isWindows"
+          },
+          {
+            "id": "customise",
+            "title": "Change how a space looks",
+            "description": "Pick a colour, an icon, the folders, and what opens with the space. No files to edit.\n[Edit This Space](command:vibespaces.edit)",
+            "media": {
+              "markdown": "media/walkthrough/customise.md"
+            },
+            "completionEvents": [
+              "onCommand:vibespaces.edit"
+            ]
+          },
+          {
+            "id": "groups",
+            "title": "Open projects side by side",
+            "description": "A group opens a few spaces together, each in its spot on the screen, and Ctrl+Alt+Shift+Home puts them all back.\n[New Group…](command:vibespaces.newGroup)",
+            "media": {
+              "markdown": "media/walkthrough/groups.md"
+            },
+            "completionEvents": [
+              "onCommand:vibespaces.newGroup"
+            ],
+            "when": "isWindows"
+          },
+          {
+            "id": "help",
+            "title": "If something looks wrong",
+            "description": "Fixes for the common hiccups, and how to undo everything.",
+            "media": {
+              "markdown": "media/walkthrough/help.md"
+            },
+            "completionEvents": [
+              "onStepSelected"
+            ]
+          }
+        ]
+      }
+    ],
+    "configuration": {
+      "title": "Vibespaces",
+      "properties": {
+        "vibespaces.folder": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "markdownDescription": "Folder that holds your spaces (`.code-workspace` files). Empty means `Vibespaces` in your Documents folder."
+        },
+        "vibespaces.colorTargets": {
+          "type": "object",
+          "scope": "application",
+          "default": {
+            "titleBar": true,
+            "statusBar": true,
+            "activityBar": false,
+            "tabs": false,
+            "border": false
+          },
+          "properties": {
+            "titleBar": {
+              "type": "boolean",
+              "description": "Title bar"
+            },
+            "statusBar": {
+              "type": "boolean",
+              "description": "Status bar (bottom)"
+            },
+            "activityBar": {
+              "type": "boolean",
+              "description": "Icon bar (left)"
+            },
+            "tabs": {
+              "type": "boolean",
+              "description": "Line over the open tab"
+            },
+            "border": {
+              "type": "boolean",
+              "description": "Window border"
+            }
+          },
+          "additionalProperties": false,
+          "markdownDescription": "Which parts of a space's window get its colour. After changing this by hand, run **Vibespaces: Repaint All Spaces**."
+        },
+        "vibespaces.intensity": {
+          "type": "string",
+          "scope": "application",
+          "enum": [
+            "bold",
+            "subtle"
+          ],
+          "enumDescriptions": [
+            "The full colour",
+            "A tint of the colour, mixed into the theme's grey"
+          ],
+          "default": "bold",
+          "markdownDescription": "How strongly a space's colour is used. After changing this by hand, run **Vibespaces: Repaint All Spaces**."
+        },
+        "vibespaces.taskbar": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "markdownDescription": "Windows: give each space's window its own taskbar button and icon, so it can be pinned and reopened from its pin."
+        },
+        "vibespaces.iconStyle": {
+          "type": "string",
+          "enum": [
+            "window",
+            "initials",
+            "image",
+            "vscode"
+          ],
+          "enumDescriptions": [
+            "A little app window in the space’s colour",
+            "A tile in the space’s colour with its initials",
+            "A picture of your own (vibespaces.iconImage)",
+            "Opt-in: your installed VS Code’s own logo, recoloured on your PC. VS Code’s brand guidelines don’t allow modified versions of its logo, so keep this for your own use (not in screenshots you share)."
+          ],
+          "default": "window",
+          "scope": "window",
+          "markdownDescription": "Taskbar icon. Set here for all spaces; a space can choose its own in its editor."
+        },
+        "vibespaces.color": {
+          "type": "string",
+          "scope": "window",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "markdownDescription": "Set in each space file by Vibespaces: the space's colour."
+        },
+        "vibespaces.id": {
+          "type": "string",
+          "scope": "window",
+          "markdownDescription": "Set in each space file by Vibespaces: keeps the space's taskbar pin working. Don't change it."
+        },
+        "vibespaces.iconImage": {
+          "type": "string",
+          "scope": "window",
+          "markdownDescription": "Set in a space file by Vibespaces: the picture for the space's taskbar icon."
+        },
+        "vibespaces.onOpen": {
+          "type": "object",
+          "scope": "window",
+          "properties": {
+            "panels": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Panels to show: explorer, search, scm, debug, testing, extensions, problems, terminal, chat, ext:<extension id>, or view:<view container id>"
+            },
+            "layout": {
+              "type": "object",
+              "properties": {
+                "left": {
+                  "type": "string",
+                  "enum": [
+                    "",
+                    "show",
+                    "hide"
+                  ]
+                },
+                "right": {
+                  "type": "string",
+                  "enum": [
+                    "",
+                    "show",
+                    "hide",
+                    "maximize"
+                  ]
+                },
+                "bottom": {
+                  "type": "string",
+                  "enum": [
+                    "",
+                    "show",
+                    "hide"
+                  ]
+                }
+              }
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Files to open, relative to the first folder or absolute"
+            },
+            "terminals": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "command": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "url": {
+              "type": "string"
+            },
+            "urlIn": {
+              "type": "string",
+              "enum": [
+                "browser",
+                "editor"
+              ]
+            },
+            "window": {
+              "type": "object",
+              "description": "Where the window goes (Windows): a preset spot, or an exact position in screen pixels. Reset Layout puts it back; atOpen also moves it when the space opens.",
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "width": {
+                  "type": "number"
+                },
+                "height": {
+                  "type": "number"
+                },
+                "maximized": {
+                  "type": "boolean"
+                },
+                "atOpen": {
+                  "type": "boolean"
+                },
+                "preset": {
+                  "type": "string",
+                  "enum": [
+                    "left-quarter",
+                    "left-third",
+                    "left-half",
+                    "center",
+                    "right-half",
+                    "right-third",
+                    "right-quarter",
+                    "maximized"
+                  ],
+                  "description": "A spot on the screen the window is on; when set, x/y/width/height are not used"
+                }
+              }
+            },
+            "resetTabs": {
+              "type": "string",
+              "enum": [
+                "keep",
+                "close"
+              ],
+              "description": "Reset Layout: close tabs that are not part of the space (its files, its assistant tabs, pinned and unsaved tabs are kept)"
+            }
+          },
+          "markdownDescription": "Set in a space file by Vibespaces: what happens when the space opens (files, panels, layout, terminals, a web page)."
+        },
+        "vibespaces.presets": {
+          "type": "array",
+          "scope": "application",
+          "default": [],
+          "markdownDescription": "Your presets: a space setup (panels, window arrangement, tab tidying) to start other spaces from. Save one from a space’s editor.",
+          "items": {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "panels": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "layout": {
+                "type": "object",
+                "properties": {
+                  "left": {
+                    "type": "string",
+                    "enum": [
+                      "",
+                      "show",
+                      "hide"
+                    ]
+                  },
+                  "right": {
+                    "type": "string",
+                    "enum": [
+                      "",
+                      "show",
+                      "hide",
+                      "maximize"
+                    ]
+                  },
+                  "bottom": {
+                    "type": "string",
+                    "enum": [
+                      "",
+                      "show",
+                      "hide"
+                    ]
+                  }
+                }
+              },
+              "resetTabs": {
+                "type": "string",
+                "enum": [
+                  "keep",
+                  "close"
+                ]
+              }
+            }
+          }
+        },
+        "vibespaces.groups": {
+          "type": "array",
+          "scope": "application",
+          "default": [],
+          "markdownDescription": "Your window groups: spaces that work side by side, each in its spot. Make and change them in the Groups list of the Vibespaces side bar.",
+          "items": {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "members": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "file": {
+                      "type": "string"
+                    },
+                    "spot": {
+                      "type": "string",
+                      "enum": [
+                        "left-quarter",
+                        "left-third",
+                        "left-half",
+                        "center",
+                        "right-half",
+                        "right-third",
+                        "right-quarter",
+                        "maximized"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "vibespaces.globalShortcut": {
+          "type": "string",
+          "scope": "application",
+          "default": "ctrl+alt+shift+home",
+          "markdownDescription": "Windows: the shortcut that puts your group back, even when VS Code isn’t in front (it also brings the space you used last to the front). Modifiers `ctrl`, `alt`, `shift`, `win` plus one key, e.g. `ctrl+alt+shift+home`. Empty turns it off; inside VS Code the same key still works."
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "vibespaces.resetLayout",
+        "key": "ctrl+alt+home",
+        "mac": "cmd+alt+home",
+        "when": "vibespaces.isSpace"
+      },
+      {
+        "command": "vibespaces.homeGroup",
+        "key": "ctrl+alt+shift+home",
+        "mac": "cmd+alt+shift+home",
+        "when": "isWindows"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -w -p .",
+    "package": "vsce package",
+    "build:helper": "node tools/build-helper.js",
+    "vscode:prepublish": "npm run compile && node tools/build-helper.js"
+  },
+  "dependencies": {
+    "@vscode/codicons": "^0.0.46-24",
+    "jsonc-parser": "^3.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.100.0",
+    "@vscode/vsce": "^3.0.0",
+    "typescript": "^5.6.0"
+  }
+}

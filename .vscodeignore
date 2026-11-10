@@ -1,0 +1,14 @@
+src/**
+out/**/*.map
+tsconfig.json
+.gitignore
+**/*.vsix
+# the icon font: only its stylesheet and font are used
+node_modules/@vscode/codicons/**
+!node_modules/@vscode/codicons/dist/codicon.css
+!node_modules/@vscode/codicons/dist/codicon.ttf
+!node_modules/@vscode/codicons/package.json
+!node_modules/@vscode/codicons/LICENSE*
+tools/**
+# the helper ships as the built program, not its source
+helper/*.cs
