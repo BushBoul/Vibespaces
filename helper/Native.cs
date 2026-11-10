@@ -132,7 +132,8 @@ namespace Vibespaces {
       IPropertyStore s = Store(h);
       try {
         string had = Get(s, ID);
-        if (had == appId && !force) return "already " + appId + pinNote;
+        // already this space's: done, unless its icon is an old one (a new icon design, say)
+        if (had == appId && !force && Get(s, RELAUNCH_ICON) == icon) return "already " + appId + pinNote;
         Set(s, RELAUNCH_COMMAND, command);
         Set(s, RELAUNCH_ICON, icon);
         Set(s, RELAUNCH_NAME, name);
@@ -476,23 +477,63 @@ namespace Vibespaces {
       return b;
     }
 
-    static Bitmap Tile(Color c, string text, int s) {
+    // The initials tile: fills the icon, in a brightened version of the space's colour (a taskbar icon in a deep
+    // title-bar colour looks dull), with a soft top-to-bottom shade and the initials big and heavy, centred by their
+    // actual outline rather than the font's line box.
+    static Bitmap Tile(Color c0, string text, int s) {
+      Color c = Bright(c0);
       Bitmap b = new Bitmap(s, s, PixelFormat.Format32bppArgb);
       using (Graphics g = Graphics.FromImage(b)) {
         Quality(g);
-        float pad = s * 0.06f;
+        float pad = s >= 32 ? s * 0.02f : 0;
         RectangleF r = new RectangleF(pad, pad, s - 2 * pad, s - 2 * pad);
-        using (GraphicsPath p = Rounded(r, s * 0.22f))
-        using (SolidBrush br = new SolidBrush(c)) g.FillPath(br, p);
+        using (GraphicsPath p = Rounded(r, s * 0.20f))
+        using (LinearGradientBrush br = new LinearGradientBrush(r, Shade(c, 1.10), Shade(c, 0.86), 90f)) g.FillPath(br, p);
         string t = s < 24 && text.Length > 1 ? text.Substring(0, 1) : text;
-        using (Font f = new Font("Segoe UI Semibold", s * (t.Length > 1 ? 0.40f : 0.52f), FontStyle.Regular, GraphicsUnit.Pixel))
-        using (SolidBrush fg = new SolidBrush(Luma(c) > 0.55 ? Color.FromArgb(30, 30, 30) : Color.White))
-        using (StringFormat sf = new StringFormat()) {
-          sf.Alignment = StringAlignment.Center; sf.LineAlignment = StringAlignment.Center;
-          g.DrawString(t, f, fg, r, sf);
+        bool dark = Luma(c) > 0.72;
+        using (FontFamily fam = Family("Segoe UI Black", "Segoe UI"))
+        using (GraphicsPath tp = new GraphicsPath())
+        using (StringFormat sf = StringFormat.GenericTypographic) {
+          FontStyle st = fam.Name == "Segoe UI Black" ? FontStyle.Regular : FontStyle.Bold;
+          tp.AddString(t, fam, (int)st, s * (t.Length > 1 ? 0.56f : 0.70f), PointF.Empty, sf);
+          RectangleF tb = tp.GetBounds();
+          float k = Math.Min(1f, r.Width * 0.80f / tb.Width);   // two wide letters (WM) stay inside the tile
+          using (Matrix m = new Matrix()) {
+            m.Translate(r.X + r.Width / 2, r.Y + r.Height / 2);
+            m.Scale(k, k);
+            m.Translate(-(tb.X + tb.Width / 2), -(tb.Y + tb.Height / 2));
+            tp.Transform(m);
+          }
+          if (s >= 32 && !dark) {
+            using (GraphicsPath sh = (GraphicsPath)tp.Clone())
+            using (Matrix d = new Matrix())
+            using (SolidBrush sb = new SolidBrush(Color.FromArgb(70, 0, 0, 0))) {
+              d.Translate(0, s * 0.02f); sh.Transform(d); g.FillPath(sb, sh);
+            }
+          }
+          using (SolidBrush fg = new SolidBrush(dark ? Color.FromArgb(32, 32, 36) : Color.White)) g.FillPath(fg, tp);
         }
       }
       return b;
+    }
+
+    // the space's colour lifted to icon brightness (like the recoloured logo, which kept VS Code's bright blue);
+    // greys stay grey
+    static Color Bright(Color c) {
+      double h, s, v; ToHsv(c.R, c.G, c.B, out h, out s, out v);
+      if (s >= 0.35) s = Math.Max(s, 0.62);   // clearly colourful: richer; slates and greys keep their own
+      v = Math.Max(v, 0.84);
+      byte R, G, B; FromHsv(h, s, v, out R, out G, out B);
+      return Color.FromArgb(R, G, B);
+    }
+
+    static Color Shade(Color c, double k) {
+      Func<int, int> f = x => (int)Math.Max(0, Math.Min(255, Math.Round(x * k)));
+      return Color.FromArgb(f(c.R), f(c.G), f(c.B));
+    }
+
+    static FontFamily Family(string want, string fallback) {
+      try { return new FontFamily(want); } catch (ArgumentException) { return new FontFamily(fallback); }
     }
 
     static GraphicsPath Rounded(RectangleF r, float rad) {

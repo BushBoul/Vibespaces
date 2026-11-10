@@ -53,12 +53,15 @@ export function iconSource(space: Space): { style: IconStyle; image?: string } {
   return { style };
 }
 
+const STYLE_REV: Partial<Record<IconStyle, string>> = { initials: ' v2' };
+
 // The space's .ico, made once per name + look. Old ones are kept: a pin may still point at one.
 export async function spaceIcon(extPath: string, space: Space, log: (m: string) => void): Promise<string | undefined> {
   if (!helperAvailable() || !space.color) return undefined;
   const { style, image } = iconSource(space);
   const safe = space.name.replace(/[^A-Za-z0-9 _-]+/g, '').trim() || 'space';
-  let key = `${space.color.slice(1)} ${style}`;
+  // the style's design version is in the name, so a redesign makes new icons instead of reusing old ones
+  let key = `${space.color.slice(1)} ${style}${STYLE_REV[style] ?? ''}`;
   if (image) key += ' ' + crypto.createHash('sha1').update(image + fs.statSync(image).mtimeMs).digest('hex').slice(0, 8);
   const out = path.join(spacesFolder(), 'icons', `${safe} ${key}.ico`);
   if (fs.existsSync(out)) return out;
