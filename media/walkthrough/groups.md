@@ -27,6 +27,11 @@ used last and brings that space's window to the front, ready to type in. Turn it
 `ctrl+alt+shift+1`. That key puts just that group back and brings it to the front, from any app. Give your other
 groups 2, 3 and so on. A space can be in several groups: in each, it goes to that group's spot.
 
+**Start things with a group:** right-click a group and choose **Launches…**. A group can run a command in one of
+its windows' terminals (start an app, with its log beside its agent), start a program outside VS Code, and open files,
+folders or web pages with their own apps (an Excel sheet opens in Excel). They start when you **open** the group, never
+when you put it back. The spaces themselves stay as they are, so a space opened on its own still opens light.
+
 ### Change it
 
 Right-click a group to choose its spaces, rename it or delete it. Right-click a space in a group to change where it

@@ -11,9 +11,29 @@ import * as vscode from 'vscode';
 import { Space, WINDOW_PRESETS, WindowPreset, WindowSpot, ensureId, listSpaces, sameFile } from './spaces';
 
 export interface Member { id: string; file: string; spot?: WindowPreset }
-export interface Group { name: string; members: Member[]; shortcut?: string }
+// What a group starts when you OPEN it (never when it's only put back in place). A space opened on its own stays
+// as it is, so an agent's space can open light and its group can bring the app and the files along.
+//   terminal  a command in a terminal of one member's window (`in`: that space's id; none: the first member),
+//             in the space's folder; once per window (a terminal of that name already there is left alone)
+//   run       a program or command started outside VS Code, by the window that opened the group
+//   open      a file, folder or web page opened with its default app (an Excel sheet opens in Excel)
+export interface Launch { kind: 'terminal' | 'run' | 'open'; name?: string; command?: string; target?: string; in?: string }
+export interface Group { name: string; members: Member[]; shortcut?: string; launch?: Launch[] }
 
 const isPreset = (v: unknown): v is WindowPreset => WINDOW_PRESETS.some((p) => p.id === v);
+const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+
+function readLaunch(v: unknown): Launch[] {
+  return (Array.isArray(v) ? v : []).map((l: any): Launch | undefined => {
+    const kind = l?.kind;
+    if (kind === 'terminal' || kind === 'run') {
+      const command = str(l.command);
+      return command ? { kind, command, ...(str(l.name) ? { name: str(l.name) } : {}), ...(kind === 'terminal' && str(l.in) ? { in: str(l.in) } : {}) } : undefined;
+    }
+    if (kind === 'open') { const target = str(l.target); return target ? { kind, target } : undefined; }
+    return undefined;
+  }).filter((l): l is Launch => !!l);
+}
 
 export function allGroups(): Group[] {
   const raw = vscode.workspace.getConfiguration('vibespaces').get<unknown[]>('groups') || [];
@@ -23,6 +43,7 @@ export function allGroups(): Group[] {
       .filter((m: any) => m && (typeof m.id === 'string' || typeof m.file === 'string'))
       .map((m: any) => ({ id: String(m.id || ''), file: String(m.file || ''), spot: isPreset(m.spot) ? m.spot : undefined })),
     shortcut: typeof g.shortcut === 'string' && g.shortcut.trim() ? g.shortcut.trim().toLowerCase() : undefined,
+    launch: readLaunch(g.launch),
   }));
 }
 
@@ -31,6 +52,7 @@ export async function saveGroups(groups: Group[]): Promise<void> {
     name: g.name,
     members: g.members.map((m) => (m.spot ? { id: m.id, file: m.file, spot: m.spot } : { id: m.id, file: m.file })),
     ...(g.shortcut ? { shortcut: g.shortcut } : {}),
+    ...(g.launch && g.launch.length ? { launch: g.launch } : {}),
   }));
   await vscode.workspace.getConfiguration('vibespaces').update('groups', store, vscode.ConfigurationTarget.Global);
 }
@@ -71,14 +93,15 @@ export interface Signal {
   ttl: number;                           // ms: windows that open this soon after it (Open group) follow it too
   focus?: string;                        // the space whose window also takes the focus (the global shortcut)
   group?: string;                        // the group's name: each window reads its own spot from its own copy of it
+  launch?: boolean;                      // Open Group: each member window also starts its terminals from the group
 }
 
 export function signalPath(ctx: vscode.ExtensionContext): string {
   return path.join(ctx.globalStorageUri.fsPath, 'home-signal.json');
 }
 
-export function sendSignal(ctx: vscode.ExtensionContext, ids: string[] | null, spots: Record<string, WindowPreset>, ttl = 0, focus?: string, group?: string): Signal {
-  const sig: Signal = { seq: crypto.randomBytes(6).toString('hex'), at: Date.now(), ids, spots, ttl, focus, group };
+export function sendSignal(ctx: vscode.ExtensionContext, ids: string[] | null, spots: Record<string, WindowPreset>, ttl = 0, focus?: string, group?: string, launch = false): Signal {
+  const sig: Signal = { seq: crypto.randomBytes(6).toString('hex'), at: Date.now(), ids, spots, ttl, focus, group, ...(launch ? { launch: true } : {}) };
   fs.mkdirSync(path.dirname(signalPath(ctx)), { recursive: true });
   fs.writeFileSync(signalPath(ctx), JSON.stringify(sig), 'utf8');
   return sig;
@@ -124,6 +147,17 @@ export function spotInSignal(sig: Signal, space: Space, id: string): WindowPrese
   const g = signalGroup(sig);
   const m = g?.members.find((x) => (x.id && x.id === id) || (x.file && sameFile(x.file, space.file)));
   return m ? m.spot : sig.spots[id];
+}
+
+// the terminals this window starts for an Open Group signal: the group's terminal launches meant for this space (as
+// this window's own settings have the group); one with no window named goes to the group's first member
+export function terminalsInSignal(sig: Signal, space: Space, id: string): Launch[] {
+  if (!sig.launch) return [];
+  const g = signalGroup(sig);
+  if (!g || !g.launch) return [];
+  const first = g.members.length ? memberSpace(g.members[0]) : undefined;
+  const isMe = (sid?: string) => !!sid && (sid === id || sid === space.id);
+  return g.launch.filter((l) => l.kind === 'terminal' && (l.in ? isMe(l.in) : !!first && (isMe(first.id) || sameFile(first.file, space.file))));
 }
 
 // "ctrl+alt+shift+1" -> "Ctrl+Alt+Shift+1"

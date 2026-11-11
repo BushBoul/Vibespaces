@@ -2,7 +2,7 @@
   "name": "vibespaces",
   "displayName": "Vibespaces",
   "description": "One window per project: its own colour, its own taskbar button, one click to open.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "publisher": "bushboul",
   "private": true,
   "license": "MIT",
@@ -112,6 +112,11 @@
       {
         "command": "vibespaces.delete",
         "title": "Delete Space…",
+        "category": "Vibespaces"
+      },
+      {
+        "command": "vibespaces.groupLaunches",
+        "title": "Launches…",
         "category": "Vibespaces"
       },
       {
@@ -380,6 +385,11 @@
           "command": "vibespaces.groupShortcut",
           "when": "view == vibespaces.groups && viewItem == group && isWindows",
           "group": "2_edit@3"
+        },
+        {
+          "command": "vibespaces.groupLaunches",
+          "when": "view == vibespaces.groups && viewItem == group",
+          "group": "2_edit@4"
         },
         {
           "command": "vibespaces.deleteGroup",
@@ -854,6 +864,44 @@
             "properties": {
               "name": {
                 "type": "string"
+              },
+              "launch": {
+                "type": "array",
+                "markdownDescription": "What the group starts when you open it (not when you put it back in place). Set them with Launches… on the group's right-click menu.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "kind"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "terminal",
+                        "run",
+                        "open"
+                      ],
+                      "enumDescriptions": [
+                        "A command in a terminal of one member's window (in its folder)",
+                        "A program or command started outside VS Code",
+                        "A file, folder or web page opened with its default app"
+                      ]
+                    },
+                    "command": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "target": {
+                      "type": "string"
+                    },
+                    "in": {
+                      "type": "string",
+                      "markdownDescription": "terminal: the space whose window runs it (its id); none = the group's first space"
+                    }
+                  }
+                }
               },
               "shortcut": {
                 "type": "string",

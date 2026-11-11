@@ -39,6 +39,8 @@ The first time Vibespaces runs, a short guide opens (**Get started with Vibespac
 5. **Groups** (Windows). Spaces that work side by side: open them together, each in its spot, and put them all back
    with **Ctrl+Alt+Shift+Home**. Make one with the + under *Groups* in the Vibespaces side bar. Right-click a group
    and choose **Group Shortcut…** to give it its own key (say Ctrl+Alt+Shift+1), so each group comes up on its own.
+   **Launches…** on the same menu has a group start things when it opens: a command in one window's terminal, a
+   program, a file (an Excel sheet opens in Excel) or a web page. A space opened on its own stays light.
 6. **Settings for all spaces** are under **Settings** in the Vibespaces side bar: which parts get coloured, bold or
    subtle, and the taskbar options.
 

@@ -12,9 +12,10 @@ import { SpaceEditor, EditorHost } from './editor';
 import { SettingsView } from './settingsView';
 import { GlobalHotkey, shortcutKey } from './hotkey';
 import {
-  Group, Member, Signal, allGroups, describeSpot, groupsOf, memberFor, memberSpace, prettyShortcut, readSignal, saveGroups,
-  sendSignal, signalFor, signalPath, spotInSignal,
+  Group, Launch, Member, Signal, allGroups, describeSpot, groupsOf, memberFor, memberSpace, prettyShortcut, readSignal, saveGroups,
+  sendSignal, signalFor, signalPath, spotInSignal, terminalsInSignal,
 } from './groups';
+import { spawn } from 'child_process';
 
 const WALKTHROUGH = 'bushboul.vibespaces#vibespaces.start';
 
@@ -167,6 +168,7 @@ export function activate(ctx: vscode.ExtensionContext) {
     vscode.commands.registerCommand('vibespaces.renameGroup', (item?: GroupItem) => renameGroup(item?.group)),
     vscode.commands.registerCommand('vibespaces.deleteGroup', (item?: GroupItem) => deleteGroup(item?.group)),
     vscode.commands.registerCommand('vibespaces.groupShortcut', (item?: GroupItem) => groupShortcut(item?.group)),
+    vscode.commands.registerCommand('vibespaces.groupLaunches', (item?: GroupItem) => editLaunches(item?.group)),
     vscode.commands.registerCommand('vibespaces.memberSpot', (item?: MemberItem) => item && memberSpot(item)),
     vscode.commands.registerCommand('vibespaces.removeMember', (item?: MemberItem) => item && removeMember(item)),
     vscode.workspace.onDidChangeConfiguration((e) => { if (e.affectsConfiguration('vibespaces.groups')) groupsTree.refresh(); }),
@@ -596,6 +598,15 @@ async function onSignal(sig: Signal, homeLayout = true) {
   const id = ensureId(s);
   if (sig.ids && !sig.ids.includes(id)) return;
   if (homeLayout) await runOnOpen(s, true, undefined, true);   // the window spot comes next, from the signal
+  // Open Group: this window's terminals from the group (once: a terminal already there is left alone)
+  for (const t of terminalsInSignal(sig, s, id)) {
+    const name = `${sig.group}: ${t.name || 'start'}`;
+    if (vscode.window.terminals.some((x) => x.name === name)) { log(`${name}: already running`); continue; }
+    const term = vscode.window.createTerminal({ name, cwd: s.folders[0] });
+    if (s.onOpen.layout.bottom !== 'hide') term.show(true);
+    term.sendText(t.command!);
+    log(`group ${sig.group}: started "${t.command}" here`);
+  }
   if (!helperAvailable()) return;
   // its spot in the group as this window's settings have it (never the sender's idea of another group)
   const preset = spotInSignal(sig, s, id);
@@ -657,14 +668,103 @@ async function openGroup(ctx: vscode.ExtensionContext, group?: Group) {
   ctx.globalState.update('lastGroup', group.name);
   const spaces = listSpaces();
   const { ids, spots } = signalFor(group);
-  // windows that open in the next minute follow it too; open ones act on it now
-  sendHome(ctx, ids, spots, 60000, group.name);
+  // windows that open in the next minute follow it too; open ones act on it now. It also carries the launches:
+  // each member window starts its own terminals.
+  onSignal(sendSignal(ctx, ids, spots, 60000, undefined, group.name, !!group.launch?.length));
   const here = currentSpace();
   for (const m of group.members) {
     const s = memberSpace(m, spaces);
     if (!s) { log(`group ${group.name}: a space is missing (${m.file || m.id})`); continue; }
     if (here && sameFile(here.file, s.file)) continue;
     await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(s.file), { forceNewWindow: true });
+  }
+  // and this window starts the programs and opens the files and pages, once
+  for (const l of group.launch ?? []) await runLaunch(group.name, l);
+}
+
+// ~ and %VARS% in a launch's path or command
+const expand = (v: string) => v.replace(/^~(?=$|[\\/])/, process.env.USERPROFILE || process.env.HOME || '~').replace(/%([^%]+)%/g, (all, n) => process.env[n] ?? all);
+
+async function runLaunch(group: string, l: Launch) {
+  try {
+    if (l.kind === 'open' && l.target) {
+      const t = expand(l.target);
+      const web = /^[a-z][a-z0-9+.-]*:\/\//i.test(t) || /^www\./i.test(t);
+      if (!web && !fs.existsSync(t)) { log(`group ${group}: can't open ${t} (not found)`); vscode.window.showWarningMessage(`Group "${group}": couldn't find ${t}`); return; }
+      const ok = await vscode.env.openExternal(web ? vscode.Uri.parse(/^www\./i.test(t) ? `https://${t}` : t) : vscode.Uri.file(t));
+      log(`group ${group}: ${ok ? 'opened' : 'could not open'} ${t}`);
+    } else if (l.kind === 'run' && l.command) {
+      // outside VS Code, on its own: it keeps running when the windows close
+      const child = spawn(expand(l.command), { shell: true, detached: true, stdio: 'ignore', windowsHide: false });
+      child.on('error', (e) => log(`group ${group}: ${l.command}: ${e.message}`));
+      child.unref();
+      log(`group ${group}: started ${l.command}`);
+    }
+  } catch (e: any) { log(`group ${group}: ${e.message}`); }
+}
+
+// ---- a group's launches: what it starts when it opens ----
+
+function describeLaunch(l: Launch, spaces = listSpaces()): { label: string; description: string } {
+  if (l.kind === 'open') return { label: `$(link-external) Open ${path.basename(l.target ?? '') || l.target}`, description: l.target ?? '' };
+  if (l.kind === 'run') return { label: `$(rocket) Start ${l.name || l.command}`, description: l.name ? l.command ?? '' : 'outside VS Code' };
+  const where = spaces.find((s) => s.id === l.in)?.name ?? 'the first space';
+  return { label: `$(terminal) ${l.name || l.command}`, description: `${l.name ? l.command + ' · ' : ''}in ${where}'s terminal` };
+}
+
+async function editLaunches(group?: Group) {
+  group = group ?? await pickGroup('Launches for which group?');
+  if (!group) return;
+  const name = group.name;
+  type Item = vscode.QuickPickItem & { act: 'del' | 'terminal' | 'run' | 'open' | 'url'; i?: number };
+  for (;;) {
+    const g = allGroups().find((x) => x.name === name);
+    if (!g) return;
+    const launch = g.launch ?? [];
+    const spaces = listSpaces();
+    const items: Item[] = [
+      ...launch.map((l, i) => ({ ...describeLaunch(l, spaces), detail: 'Pick to remove', act: 'del' as const, i })),
+      { label: '', kind: vscode.QuickPickItemKind.Separator, act: 'del' },
+      { label: '$(terminal) Run a command in a space\'s terminal…', description: 'e.g. start the app, with its log in the agent\'s window', act: 'terminal' },
+      { label: '$(rocket) Start a program…', description: 'outside VS Code, e.g. start "" "C:\\Apps\\Dashboard.exe"', act: 'run' },
+      { label: '$(file) Open a file or folder…', description: 'with its own app: an Excel sheet opens in Excel', act: 'open' },
+      { label: '$(globe) Open a web page…', description: 'in your browser', act: 'url' },
+    ];
+    const pick = await vscode.window.showQuickPick(items, {
+      title: `Launches for "${name}"`,
+      placeHolder: launch.length ? 'These start when you open the group (not when you put it back). Pick one to remove it, or add another.' : 'Nothing yet. These start when you open the group (not when you put it back).',
+    });
+    if (!pick) return;
+    let add: Launch | undefined;
+    if (pick.act === 'del' && pick.i !== undefined) {
+      const ok = await vscode.window.showWarningMessage(`Remove "${describeLaunch(launch[pick.i], spaces).label.replace(/^\$\([^)]*\) /, '')}" from "${name}"?`, { modal: true }, 'Remove');
+      if (ok) await saveGroups(allGroups().map((x) => (x.name === name ? { ...x, launch: launch.filter((_, j) => j !== pick.i) } : x)));
+      continue;
+    }
+    if (pick.act === 'terminal') {
+      const members = g.members.map((m) => memberSpace(m, spaces)).filter((s): s is Space => !!s);
+      const where = members.length === 1 ? members[0] : (await vscode.window.showQuickPick(members.map((s) => ({ label: s.name, s })), { title: 'In which space\'s window?' }))?.s;
+      if (!where) continue;
+      const command = (await vscode.window.showInputBox({ title: `Command for ${where.name}'s terminal`, prompt: `Runs in ${where.folders[0] ?? 'its folder'}`, placeHolder: 'e.g. npm run dev' }))?.trim();
+      if (!command) continue;
+      const nm = (await vscode.window.showInputBox({ title: 'A name for its terminal (optional)', placeHolder: 'e.g. app' }))?.trim();
+      add = { kind: 'terminal', command, in: ensureId(where), ...(nm ? { name: nm } : {}) };
+    } else if (pick.act === 'run') {
+      const command = (await vscode.window.showInputBox({ title: 'Program or command to start', prompt: 'Starts outside VS Code and keeps running. Paths with spaces in quotes; ~ and %VARS% work.', placeHolder: 'start "" "C:\\Apps\\Dashboard.exe"' }))?.trim();
+      if (!command) continue;
+      add = { kind: 'run', command };
+    } else if (pick.act === 'open') {
+      const uris = await vscode.window.showOpenDialog({ canSelectFiles: true, canSelectFolders: true, canSelectMany: true, openLabel: 'Open with the group' });
+      if (!uris?.length) continue;
+      const adds: Launch[] = uris.map((u) => ({ kind: 'open', target: u.fsPath }));
+      await saveGroups(allGroups().map((x) => (x.name === name ? { ...x, launch: [...launch, ...adds] } : x)));
+      continue;
+    } else if (pick.act === 'url') {
+      const target = (await vscode.window.showInputBox({ title: 'Web page to open', placeHolder: 'https://…', validateInput: (v) => (/^(https?:\/\/|www\.)\S+$/i.test(v.trim()) ? undefined : 'A web address, e.g. https://example.com') }))?.trim();
+      if (!target) continue;
+      add = { kind: 'open', target };
+    }
+    if (add) await saveGroups(allGroups().map((x) => (x.name === name ? { ...x, launch: [...launch, add!] } : x)));
   }
 }
 
@@ -799,9 +899,10 @@ class GroupItem extends vscode.TreeItem {
   constructor(public readonly group: Group, last: boolean) {
     super(group.name, vscode.TreeItemCollapsibleState.Expanded);
     const key = group.shortcut ? ` · ${prettyShortcut(group.shortcut)}` : '';
-    this.description = `${group.members.length} space${group.members.length === 1 ? '' : 's'}${key}${last ? ' · last opened' : ''}`;
+    const n = group.launch?.length ?? 0, starts = n ? ` · starts ${n} thing${n === 1 ? '' : 's'}` : '';
+    this.description = `${group.members.length} space${group.members.length === 1 ? '' : 's'}${starts}${key}${last ? ' · last opened' : ''}`;
     this.tooltip = 'Play opens its spaces side by side; the house puts them back in their spots (Ctrl+Alt+Shift+Home'
-      + (group.shortcut ? `, or this group's own ${prettyShortcut(group.shortcut)}` : '') + '). Right-click to give it its own shortcut.';
+      + (group.shortcut ? `, or this group's own ${prettyShortcut(group.shortcut)}` : '') + '). Right-click to give it its own shortcut, or Launches… to have it start an app, a terminal command or a file when it opens.';
     this.contextValue = 'group';
     this.iconPath = new vscode.ThemeIcon('multiple-windows');
   }
