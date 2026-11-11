@@ -2,7 +2,7 @@
   "name": "vibespaces",
   "displayName": "Vibespaces",
   "description": "One window per project: its own colour, its own taskbar button, one click to open.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "bushboul",
   "private": true,
   "license": "MIT",
@@ -112,6 +112,16 @@
       {
         "command": "vibespaces.delete",
         "title": "Delete Space…",
+        "category": "Vibespaces"
+      },
+      {
+        "command": "vibespaces.moveUp",
+        "title": "Move Up",
+        "category": "Vibespaces"
+      },
+      {
+        "command": "vibespaces.moveDown",
+        "title": "Move Down",
         "category": "Vibespaces"
       },
       {
@@ -322,6 +332,16 @@
           "group": "3_file@1"
         },
         {
+          "command": "vibespaces.moveUp",
+          "when": "view == vibespaces.list && viewItem =~ /^space/",
+          "group": "4_order@1"
+        },
+        {
+          "command": "vibespaces.moveDown",
+          "when": "view == vibespaces.list && viewItem =~ /^space/",
+          "group": "4_order@2"
+        },
+        {
           "command": "vibespaces.delete",
           "when": "view == vibespaces.list && viewItem =~ /^space/",
           "group": "9_delete@1"
@@ -384,6 +404,14 @@
         },
         {
           "command": "vibespaces.openSpace",
+          "when": "false"
+        },
+        {
+          "command": "vibespaces.moveUp",
+          "when": "false"
+        },
+        {
+          "command": "vibespaces.moveDown",
           "when": "false"
         },
         {
@@ -523,6 +551,15 @@
           "default": "",
           "scope": "application",
           "markdownDescription": "Folder that holds your spaces (`.code-workspace` files). Empty means `Vibespaces` in your Documents folder."
+        },
+        "vibespaces.order": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "scope": "application",
+          "markdownDescription": "The order of the Spaces list, by space id. Drag spaces in the list (or right-click › Move Up / Move Down) to set it; spaces not in it follow, by name. Empty means by name."
         },
         "vibespaces.colorTargets": {
           "type": "object",

@@ -131,11 +131,56 @@ export function listSpaces(): Space[] {
   const dir = spacesFolder();
   let names: string[];
   try { names = fs.readdirSync(dir); } catch { return []; }
-  return names
+  const spaces = names
     .filter((n) => n.toLowerCase().endsWith('.code-workspace'))
     .map((n) => readSpace(path.join(dir, n)))
     .filter((s): s is Space => !!s)
     .sort((a, b) => a.name.localeCompare(b.name));
+  // your own order first (vibespaces.order, set by dragging in the list or Move Up / Down), then the rest by name
+  const order = savedOrder();
+  if (!order.length) return spaces;
+  const rank = new Map(order.map((k, i) => [k, i] as [string, number]));
+  const at = (s: Space) => rank.get(spaceKey(s)) ?? Infinity;
+  return spaces.map((s, i) => ({ s, i })).sort((a, b) => (at(a.s) - at(b.s)) || (a.i - b.i)).map((x) => x.s);
+}
+
+// ---- the list's order ----
+
+// a space's key in the order: its id, which a rename keeps (an old space without one: its name)
+export function spaceKey(s: Space): string { return s.id || 'name:' + s.name.toLowerCase(); }
+
+function savedOrder(): string[] {
+  const v = vscode.workspace.getConfiguration('vibespaces').get<unknown>('order');
+  return Array.isArray(v) ? v.filter((k): k is string => typeof k === 'string') : [];
+}
+
+async function saveOrder(spaces: Space[]) {
+  await vscode.workspace.getConfiguration('vibespaces').update('order', spaces.map(spaceKey), vscode.ConfigurationTarget.Global);
+}
+
+// Move Up / Move Down: one place along the list
+export async function moveSpace(file: string, by: number) {
+  const all = listSpaces();
+  const i = all.findIndex((s) => sameFile(s.file, file)), j = i + by;
+  if (i < 0 || j < 0 || j >= all.length) return;
+  [all[i], all[j]] = [all[j], all[i]];
+  await saveOrder(all);
+}
+
+// a drop: the dragged spaces land at the target, keeping their own order (after it when they came from
+// above, before it when they came from below); dropped on no space, they go to the end
+export async function placeSpaces(files: string[], target?: string) {
+  const all = listSpaces();
+  const moving = all.filter((s) => files.some((f) => sameFile(f, s.file)));
+  if (!moving.length || (target && moving.some((s) => sameFile(s.file, target)))) return;
+  const rest = all.filter((s) => !moving.includes(s));
+  let at = rest.length;
+  if (target) {
+    const t = rest.findIndex((s) => sameFile(s.file, target));
+    if (t >= 0) at = all.indexOf(moving[0]) < all.findIndex((s) => sameFile(s.file, target)) ? t + 1 : t;
+  }
+  rest.splice(at, 0, ...moving);
+  await saveOrder(rest);
 }
 
 const isHex = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-f]{6}/i.test(v);

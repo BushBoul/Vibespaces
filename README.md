@@ -29,7 +29,8 @@ The first time Vibespaces runs, a short guide opens (**Get started with Vibespac
 
 1. **Make a space.** Open your project folder in VS Code (*File > Open Folder…*), click the Vibespaces icon
    (four small squares) on the far left, then **Make This Window a Space**. Name it and pick a colour.
-2. **Switch spaces.** Click a space in the Vibespaces list, or the space name at the bottom left of the window.
+2. **Switch spaces.** Click a space in the Vibespaces list, or the space name at the bottom left of the window. Drag spaces in the list to put them in your own order
+   (or right-click a space › **Move Up** / **Move Down**).
 3. **Pin it** (Windows). Right-click the space's taskbar button and choose **Pin to taskbar**.
 4. **Change it.** Click the gear next to a space: name, colour, folders, taskbar icon, what opens with it.
    Start from a preset (an AI assistant filling the window: Claude, Codex, Antigravity, Gemini, Grok, Copilot, Cline; or a layout; or one you saved), and put the window
@@ -75,6 +76,7 @@ except the space icons it's asked to make.
 | Setting | Default | |
 |---|---|---|
 | `vibespaces.folder` | `Documents/Vibespaces` | where the space files live |
+| `vibespaces.order` | by name | the Spaces list's order, by space id (set by dragging in the list) |
 | `vibespaces.colorTargets` | title bar, status bar | which parts are coloured |
 | `vibespaces.intensity` | `bold` | `bold` or `subtle` |
 | `vibespaces.taskbar` | on | Windows taskbar buttons per space |

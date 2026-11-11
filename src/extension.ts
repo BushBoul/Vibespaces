@@ -2,8 +2,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import {
-  PRESETS, Space, WINDOW_PRESETS, WindowPreset, WindowSpot, createSpaceFile, currentSpace, ensureId, listSpaces, nameTaken,
-  readSpace, renameSpace, sameFile, setOnOpen, spacesFolder, validName, writeLook,
+  PRESETS, Space, WINDOW_PRESETS, WindowPreset, WindowSpot, createSpaceFile, currentSpace, ensureId, listSpaces, moveSpace, nameTaken,
+  placeSpaces, readSpace, renameSpace, sameFile, setOnOpen, spacesFolder, validName, writeLook,
 } from './spaces';
 import { allPanels, findPanel, tabOpen } from './panels';
 import { KIND_LABEL, Preset, allPresets, kindOf, missing, offerInstall, summary, withPreset } from './presets';
@@ -71,7 +71,11 @@ export function activate(ctx: vscode.ExtensionContext) {
 
   ctx.subscriptions.push(
     output, status,
-    vscode.window.registerTreeDataProvider('vibespaces.list', tree),
+    // drag spaces to put the list in your own order (several at once with Ctrl/Shift)
+    vscode.window.createTreeView('vibespaces.list', { treeDataProvider: tree, dragAndDropController: new SpacesDrop(), canSelectMany: true }),
+    vscode.commands.registerCommand('vibespaces.moveUp', (item?: SpaceItem) => item && moveSpace(item.space.file, -1)),
+    vscode.commands.registerCommand('vibespaces.moveDown', (item?: SpaceItem) => item && moveSpace(item.space.file, 1)),
+    vscode.workspace.onDidChangeConfiguration((e) => { if (e.affectsConfiguration('vibespaces.order')) tree.refresh(); }),
     vscode.window.registerWebviewViewProvider('vibespaces.settings', settings),
     vscode.commands.registerCommand('vibespaces.open', () => pickAndOpen()),
     vscode.commands.registerCommand('vibespaces.openSpace', (arg: string | SpaceItem) => openSpace(typeof arg === 'string' ? arg : arg.space.file)),
@@ -530,6 +534,23 @@ class SpacesTree implements vscode.TreeDataProvider<SpaceItem> {
     const here = currentSpace();
     const dir = this.ctx.globalStorageUri.fsPath;
     return listSpaces().map((s) => new SpaceItem(s, !!here && sameFile(here.file, s.file), dir));
+  }
+}
+
+// dragging in the Spaces list reorders it (the order is a setting, so every window's list follows)
+const SPACES_MIME = 'application/vnd.vibespaces.spaces';
+class SpacesDrop implements vscode.TreeDragAndDropController<SpaceItem> {
+  readonly dragMimeTypes = [SPACES_MIME];
+  readonly dropMimeTypes = [SPACES_MIME];
+  handleDrag(source: readonly SpaceItem[], data: vscode.DataTransfer) {
+    data.set(SPACES_MIME, new vscode.DataTransferItem(JSON.stringify(source.map((s) => s.space.file))));
+  }
+  async handleDrop(target: SpaceItem | undefined, data: vscode.DataTransfer) {
+    const item = data.get(SPACES_MIME);
+    if (!item) return;
+    let files: string[];
+    try { files = JSON.parse(await item.asString()); } catch { return; }
+    if (Array.isArray(files) && files.length) await placeSpaces(files, target?.space.file);
   }
 }
 
