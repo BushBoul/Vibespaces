@@ -11,7 +11,7 @@ import * as vscode from 'vscode';
 import { Space, WINDOW_PRESETS, WindowPreset, WindowSpot, ensureId, listSpaces, sameFile } from './spaces';
 
 export interface Member { id: string; file: string; spot?: WindowPreset }
-export interface Group { name: string; members: Member[] }
+export interface Group { name: string; members: Member[]; shortcut?: string }
 
 const isPreset = (v: unknown): v is WindowPreset => WINDOW_PRESETS.some((p) => p.id === v);
 
@@ -22,6 +22,7 @@ export function allGroups(): Group[] {
     members: (Array.isArray(g.members) ? g.members : [])
       .filter((m: any) => m && (typeof m.id === 'string' || typeof m.file === 'string'))
       .map((m: any) => ({ id: String(m.id || ''), file: String(m.file || ''), spot: isPreset(m.spot) ? m.spot : undefined })),
+    shortcut: typeof g.shortcut === 'string' && g.shortcut.trim() ? g.shortcut.trim().toLowerCase() : undefined,
   }));
 }
 
@@ -29,6 +30,7 @@ export async function saveGroups(groups: Group[]): Promise<void> {
   const store = groups.map((g) => ({
     name: g.name,
     members: g.members.map((m) => (m.spot ? { id: m.id, file: m.file, spot: m.spot } : { id: m.id, file: m.file })),
+    ...(g.shortcut ? { shortcut: g.shortcut } : {}),
   }));
   await vscode.workspace.getConfiguration('vibespaces').update('groups', store, vscode.ConfigurationTarget.Global);
 }
@@ -68,14 +70,15 @@ export interface Signal {
   spots: Record<string, WindowPreset>;   // a group's spot for a space, by its id
   ttl: number;                           // ms: windows that open this soon after it (Open group) follow it too
   focus?: string;                        // the space whose window also takes the focus (the global shortcut)
+  group?: string;                        // the group's name: each window reads its own spot from its own copy of it
 }
 
 export function signalPath(ctx: vscode.ExtensionContext): string {
   return path.join(ctx.globalStorageUri.fsPath, 'home-signal.json');
 }
 
-export function sendSignal(ctx: vscode.ExtensionContext, ids: string[] | null, spots: Record<string, WindowPreset>, ttl = 0, focus?: string): Signal {
-  const sig: Signal = { seq: crypto.randomBytes(6).toString('hex'), at: Date.now(), ids, spots, ttl, focus };
+export function sendSignal(ctx: vscode.ExtensionContext, ids: string[] | null, spots: Record<string, WindowPreset>, ttl = 0, focus?: string, group?: string): Signal {
+  const sig: Signal = { seq: crypto.randomBytes(6).toString('hex'), at: Date.now(), ids, spots, ttl, focus, group };
   fs.mkdirSync(path.dirname(signalPath(ctx)), { recursive: true });
   fs.writeFileSync(signalPath(ctx), JSON.stringify(sig), 'utf8');
   return sig;
@@ -100,4 +103,31 @@ export function signalFor(g: Group): { ids: string[]; spots: Record<string, Wind
     if (m.spot) spots[id] = m.spot;
   }
   return { ids, spots };
+}
+
+// the group a signal is about, from this window's own settings: by name, else (a signal from an older Vibespaces,
+// which sent no name) the one group with exactly those spaces
+function signalGroup(sig: Signal): Group | undefined {
+  const groups = allGroups();
+  const named = sig.group ? groups.find((g) => g.name === sig.group) : undefined;
+  if (named || !sig.ids) return named;
+  const key = (ids: string[]) => [...ids].sort().join('|');
+  const want = key(sig.ids);
+  const same = groups.filter((g) => key(signalFor(g).ids) === want);
+  return same.length === 1 ? same[0] : undefined;
+}
+
+// where this space goes for a signal: its spot in the group as this window knows it, so a window never takes a spot
+// meant for another group (or one the sender's Vibespaces didn't know); the sender's map only when the group isn't
+// here (settings not caught up yet); undefined: the space's own spot
+export function spotInSignal(sig: Signal, space: Space, id: string): WindowPreset | undefined {
+  const g = signalGroup(sig);
+  const m = g?.members.find((x) => (x.id && x.id === id) || (x.file && sameFile(x.file, space.file)));
+  return m ? m.spot : sig.spots[id];
+}
+
+// "ctrl+alt+shift+1" -> "Ctrl+Alt+Shift+1"
+export function prettyShortcut(s: string): string {
+  return s.split('+').map((k) => k.trim()).filter(Boolean)
+    .map((k) => (k.length === 1 ? k.toUpperCase() : k.charAt(0).toUpperCase() + k.slice(1))).join('+');
 }

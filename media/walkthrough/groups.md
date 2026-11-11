@@ -23,6 +23,10 @@ opens them side by side, each in its own spot on the screen, and puts them all b
 used last and brings that space's window to the front, ready to type in. Turn it off or change the key under
 **Settings** in the Vibespaces side bar.
 
+**A key for each group:** right-click a group and choose **Group Shortcut…**, then type a key such as
+`ctrl+alt+shift+1`. That key puts just that group back and brings it to the front, from any app. Give your other
+groups 2, 3 and so on. A space can be in several groups: in each, it goes to that group's spot.
+
 ### Change it
 
 Right-click a group to choose its spaces, rename it or delete it. Right-click a space in a group to change where it

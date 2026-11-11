@@ -2,7 +2,7 @@
   "name": "vibespaces",
   "displayName": "Vibespaces",
   "description": "One window per project: its own colour, its own taskbar button, one click to open.",
-  "version": "0.13.1",
+  "version": "0.14.0",
   "publisher": "bushboul",
   "private": true,
   "license": "MIT",
@@ -152,6 +152,11 @@
         "category": "Vibespaces",
         "command": "vibespaces.deleteGroup",
         "title": "Delete Group…"
+      },
+      {
+        "category": "Vibespaces",
+        "command": "vibespaces.groupShortcut",
+        "title": "Group Shortcut…"
       },
       {
         "category": "Vibespaces",
@@ -321,6 +326,11 @@
           "group": "2_edit@2"
         },
         {
+          "command": "vibespaces.groupShortcut",
+          "when": "view == vibespaces.groups && viewItem == group && isWindows",
+          "group": "2_edit@3"
+        },
+        {
           "command": "vibespaces.deleteGroup",
           "when": "view == vibespaces.groups && viewItem == group",
           "group": "9_delete@1"
@@ -371,6 +381,10 @@
         },
         {
           "command": "vibespaces.homeGroup",
+          "when": "isWindows"
+        },
+        {
+          "command": "vibespaces.groupShortcut",
           "when": "isWindows"
         },
         {
@@ -772,6 +786,10 @@
             "properties": {
               "name": {
                 "type": "string"
+              },
+              "shortcut": {
+                "type": "string",
+                "markdownDescription": "Windows: this group's own shortcut, e.g. `ctrl+alt+shift+1`. It puts the group back in place and brings it to the front, even from another app."
               },
               "members": {
                 "type": "array",

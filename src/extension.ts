@@ -10,10 +10,10 @@ import { KIND_LABEL, Preset, allPresets, kindOf, missing, offerInstall, summary,
 import { helperAvailable, identifyWindow, placeWindow, raiseWindow, whereWindow } from './taskbar';
 import { SpaceEditor, EditorHost } from './editor';
 import { SettingsView } from './settingsView';
-import { GlobalHotkey } from './hotkey';
+import { GlobalHotkey, shortcutKey } from './hotkey';
 import {
-  Group, Member, Signal, allGroups, describeSpot, groupsOf, memberFor, memberSpace, readSignal, saveGroups, sendSignal,
-  signalFor, signalPath,
+  Group, Member, Signal, allGroups, describeSpot, groupsOf, memberFor, memberSpace, prettyShortcut, readSignal, saveGroups,
+  sendSignal, signalFor, signalPath, spotInSignal,
 } from './groups';
 
 const WALKTHROUGH = 'bushboul.vibespaces#vibespaces.start';
@@ -162,6 +162,7 @@ export function activate(ctx: vscode.ExtensionContext) {
     vscode.commands.registerCommand('vibespaces.editGroup', (item?: GroupItem) => editGroup(item?.group)),
     vscode.commands.registerCommand('vibespaces.renameGroup', (item?: GroupItem) => renameGroup(item?.group)),
     vscode.commands.registerCommand('vibespaces.deleteGroup', (item?: GroupItem) => deleteGroup(item?.group)),
+    vscode.commands.registerCommand('vibespaces.groupShortcut', (item?: GroupItem) => groupShortcut(item?.group)),
     vscode.commands.registerCommand('vibespaces.memberSpot', (item?: MemberItem) => item && memberSpot(item)),
     vscode.commands.registerCommand('vibespaces.removeMember', (item?: MemberItem) => item && removeMember(item)),
     vscode.workspace.onDidChangeConfiguration((e) => { if (e.affectsConfiguration('vibespaces.groups')) groupsTree.refresh(); }),
@@ -174,13 +175,40 @@ export function activate(ctx: vscode.ExtensionContext) {
     const s = currentSpace();
     if (s && vscode.window.state.focused) ctx.globalState.update('lastFocusedSpace', ensureId(s));
   };
+  // each group's own shortcut (optional): one helper per key, held by whichever window gets it first
+  const groupKeys = new Map<string, GlobalHotkey>();
+  const syncGroupKeys = () => {
+    const main = shortcutKey(vscode.workspace.getConfiguration('vibespaces').get<string>('globalShortcut') ?? '');
+    const want = new Map<string, string>();   // key -> as written
+    for (const g of allGroups()) {
+      if (!g.shortcut) continue;
+      const k = shortcutKey(g.shortcut);
+      if (!k) { log(`group ${g.name}: can't use the shortcut "${g.shortcut}"`); continue; }
+      if (k === main || want.has(k)) { log(`group ${g.name}: ${g.shortcut} is already another shortcut`); continue; }
+      want.set(k, g.shortcut);
+    }
+    for (const [k, h] of groupKeys) if (!want.has(k)) { h.dispose(); groupKeys.delete(k); }
+    for (const [k, written] of want) {
+      if (groupKeys.has(k)) continue;
+      const h = new GlobalHotkey(ctx.extensionPath, log, () => homeByShortcut(ctx, k), () => written, 'group shortcut');
+      groupKeys.set(k, h);
+      h.start(true);
+    }
+  };
   ctx.subscriptions.push(
     hotkey,
-    vscode.window.onDidChangeWindowState((st) => { if (st.focused) { noteFocus(); hotkey.start(); } }),
-    vscode.workspace.onDidChangeConfiguration((e) => { if (e.affectsConfiguration('vibespaces.globalShortcut')) hotkey.start(true); }),
+    { dispose: () => { groupKeys.forEach((h) => h.dispose()); groupKeys.clear(); } },
+    vscode.window.onDidChangeWindowState((st) => {
+      if (st.focused) { noteFocus(); hotkey.start(); groupKeys.forEach((h) => h.start()); }
+    }),
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration('vibespaces.globalShortcut')) hotkey.start(true);
+      if (e.affectsConfiguration('vibespaces.globalShortcut') || e.affectsConfiguration('vibespaces.groups')) syncGroupKeys();
+    }),
   );
   noteFocus();
   hotkey.start(true);
+  syncGroupKeys();
 
   const here = currentSpace();
   if (here) {
@@ -548,8 +576,10 @@ async function onSignal(sig: Signal, homeLayout = true) {
   if (sig.ids && !sig.ids.includes(id)) return;
   if (homeLayout) await runOnOpen(s, true, undefined, true);   // the window spot comes next, from the signal
   if (!helperAvailable()) return;
-  const spot: WindowSpot | undefined = sig.spots[id]
-    ? { preset: sig.spots[id], x: 0, y: 0, width: 0, height: 0, maximized: false, atOpen: true }
+  // its spot in the group as this window's settings have it (never the sender's idea of another group)
+  const preset = spotInSignal(sig, s, id);
+  const spot: WindowSpot | undefined = preset
+    ? { preset, x: 0, y: 0, width: 0, height: 0, maximized: false, atOpen: true }
     : s.onOpen.window;
   const focus = sig.focus === id;
   try {
@@ -568,11 +598,21 @@ function homeFromAnywhere(ctx: vscode.ExtensionContext) {
   const group = mine.find((g) => g.name === last) ?? mine[0] ?? groups.find((g) => g.name === last);
   if (!group) { onSignal(sendSignal(ctx, null, {}, 0, lastSpace)); return; }
   const { ids, spots } = signalFor(group);
-  onSignal(sendSignal(ctx, ids, spots, 0, lastSpace && ids.includes(lastSpace) ? lastSpace : ids[0]));
+  onSignal(sendSignal(ctx, ids, spots, 0, lastSpace && ids.includes(lastSpace) ? lastSpace : ids[0], group.name));
 }
 
-function sendHome(ctx: vscode.ExtensionContext, ids: string[] | null, spots: Record<string, WindowPreset>, ttl = 0) {
-  onSignal(sendSignal(ctx, ids, spots, ttl));
+// a group's own shortcut, pressed anywhere: that group back in place, and it becomes the group used last
+function homeByShortcut(ctx: vscode.ExtensionContext, key: string) {
+  const group = allGroups().find((g) => g.shortcut && shortcutKey(g.shortcut) === key);
+  if (!group) return;
+  ctx.globalState.update('lastGroup', group.name);
+  const lastSpace = ctx.globalState.get<string>('lastFocusedSpace');
+  const { ids, spots } = signalFor(group);
+  onSignal(sendSignal(ctx, ids, spots, 0, lastSpace && ids.includes(lastSpace) ? lastSpace : ids[0], group.name));
+}
+
+function sendHome(ctx: vscode.ExtensionContext, ids: string[] | null, spots: Record<string, WindowPreset>, ttl = 0, group?: string) {
+  onSignal(sendSignal(ctx, ids, spots, ttl, undefined, group));
 }
 
 // the group to home: the one this window's space was last opened with, else its first group; outside a space,
@@ -586,7 +626,7 @@ async function homeGroup(ctx: vscode.ExtensionContext, group?: Group) {
   }
   if (!group) { sendHome(ctx, null, {}); return; }
   const { ids, spots } = signalFor(group);
-  sendHome(ctx, ids, spots);
+  sendHome(ctx, ids, spots, 0, group.name);
 }
 
 // opens every space in the group (one already open just comes forward) and puts each in its spot
@@ -597,7 +637,7 @@ async function openGroup(ctx: vscode.ExtensionContext, group?: Group) {
   const spaces = listSpaces();
   const { ids, spots } = signalFor(group);
   // windows that open in the next minute follow it too; open ones act on it now
-  sendHome(ctx, ids, spots, 60000);
+  sendHome(ctx, ids, spots, 60000, group.name);
   const here = currentSpace();
   for (const m of group.members) {
     const s = memberSpace(m, spaces);
@@ -670,6 +710,32 @@ async function editGroup(group?: Group) {
   await saveGroups(allGroups().map((g) => (g.name === g0.name ? { ...g, members } : g)));
 }
 
+// a shortcut for one group (Windows: works from any app); empty removes it
+async function groupShortcut(group?: Group) {
+  group = group ?? await pickGroup('A shortcut for which group?');
+  if (!group) return;
+  const g0 = group;
+  const mainKey = shortcutKey(vscode.workspace.getConfiguration('vibespaces').get<string>('globalShortcut') ?? '');
+  const v = await vscode.window.showInputBox({
+    title: `Shortcut for "${g0.name}"`,
+    value: g0.shortcut ?? '',
+    placeHolder: 'e.g. ctrl+alt+shift+1',
+    prompt: 'Puts this group back in place and brings it to the front, even from another app. Modifiers ctrl, alt, shift, win plus one key. Empty for none.',
+    validateInput: (text) => {
+      const t = text.trim();
+      if (!t) return undefined;
+      const k = shortcutKey(t);
+      if (!k) return 'Use ctrl, alt, shift or win (one or more) plus one key, e.g. ctrl+alt+shift+1';
+      if (k === mainKey) return 'That\'s the main group shortcut (Settings in the Vibespaces side bar)';
+      const other = allGroups().find((g) => g.name !== g0.name && g.shortcut && shortcutKey(g.shortcut) === k);
+      return other ? `"${other.name}" already uses it` : undefined;
+    },
+  });
+  if (v === undefined) return;
+  const t = v.trim().toLowerCase().replace(/\s+/g, '');
+  await saveGroups(allGroups().map((g) => (g.name === g0.name ? { ...g, shortcut: t || undefined } : g)));
+}
+
 async function renameGroup(group?: Group) {
   group = group ?? await pickGroup('Rename which group?');
   if (!group) return;
@@ -711,8 +777,10 @@ async function removeMember(item: MemberItem) {
 class GroupItem extends vscode.TreeItem {
   constructor(public readonly group: Group, last: boolean) {
     super(group.name, vscode.TreeItemCollapsibleState.Expanded);
-    this.description = `${group.members.length} space${group.members.length === 1 ? '' : 's'}${last ? ' · last opened' : ''}`;
-    this.tooltip = 'Play opens its spaces side by side; the house puts them back in their spots (Ctrl+Alt+Shift+Home).';
+    const key = group.shortcut ? ` · ${prettyShortcut(group.shortcut)}` : '';
+    this.description = `${group.members.length} space${group.members.length === 1 ? '' : 's'}${key}${last ? ' · last opened' : ''}`;
+    this.tooltip = 'Play opens its spaces side by side; the house puts them back in their spots (Ctrl+Alt+Shift+Home'
+      + (group.shortcut ? `, or this group's own ${prettyShortcut(group.shortcut)}` : '') + '). Right-click to give it its own shortcut.';
     this.contextValue = 'group';
     this.iconPath = new vscode.ThemeIcon('multiple-windows');
   }

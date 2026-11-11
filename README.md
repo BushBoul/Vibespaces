@@ -25,7 +25,8 @@ The first time Vibespaces runs, a short guide opens (**Get started with Vibespac
    in a column, a half or full screen, or exactly where you saved it. Moved things around? **Ctrl+Alt+Home** puts the space's
    panels, layout and window position back.
 5. **Groups** (Windows). Spaces that work side by side: open them together, each in its spot, and put them all back
-   with **Ctrl+Alt+Shift+Home**. Make one with the + under *Groups* in the Vibespaces side bar.
+   with **Ctrl+Alt+Shift+Home**. Make one with the + under *Groups* in the Vibespaces side bar. Right-click a group
+   and choose **Group Shortcut…** to give it its own key (say Ctrl+Alt+Shift+1), so each group comes up on its own.
 6. **Settings for all spaces** are under **Settings** in the Vibespaces side bar: which parts get coloured, bold or
    subtle, and the taskbar options.
 
