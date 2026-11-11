@@ -901,8 +901,10 @@ class GroupItem extends vscode.TreeItem {
     const key = group.shortcut ? ` · ${prettyShortcut(group.shortcut)}` : '';
     const n = group.launch?.length ?? 0, starts = n ? ` · starts ${n} thing${n === 1 ? '' : 's'}` : '';
     this.description = `${group.members.length} space${group.members.length === 1 ? '' : 's'}${starts}${key}${last ? ' · last opened' : ''}`;
-    this.tooltip = 'Play opens its spaces side by side; the house puts them back in their spots (Ctrl+Alt+Shift+Home'
+    this.tooltip = 'Click (or play) opens its spaces side by side' + (n ? ' and starts its launches' : '') + '; the house puts them back in their spots (Ctrl+Alt+Shift+Home'
       + (group.shortcut ? `, or this group's own ${prettyShortcut(group.shortcut)}` : '') + '). Right-click to give it its own shortcut, or Launches… to have it start an app, a terminal command or a file when it opens.';
+    // a click on the group's name opens the group, as a click on a space opens the space (the arrow still folds it)
+    this.command = { command: 'vibespaces.openGroup', title: 'Open Group', arguments: [this] };
     this.contextValue = 'group';
     this.iconPath = new vscode.ThemeIcon('multiple-windows');
   }
