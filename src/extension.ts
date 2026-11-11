@@ -219,6 +219,7 @@ export function activate(ctx: vscode.ExtensionContext) {
   const here = currentSpace();
   if (here) {
     ensureId(here);
+    markOpen(ctx, here);
     // opened as part of a group (Open group, moments ago): the group's spot wins over the space's own
     const sig = readSignal(ctx);
     const forUs = !!sig && Date.now() - sig.at < sig.ttl && (!sig.ids || sig.ids.includes(here.id!));
@@ -234,7 +235,38 @@ export function activate(ctx: vscode.ExtensionContext) {
   }
 }
 
-export function deactivate() {}
+export function deactivate() { unmarkOpen(); }
+
+// ---- which spaces have a window open ----
+// Each space's window leaves a note (its extension host's process id) in global storage, so Open Group can leave a
+// space whose window is already up alone: opening it again made VS Code replace that window with a new one. A note
+// whose process is gone (a crash, a closed window that didn't clean up) counts as closed.
+let openNote: string | undefined;
+const openDir = (ctx: vscode.ExtensionContext) => path.join(ctx.globalStorageUri.fsPath, 'open');
+function markOpen(ctx: vscode.ExtensionContext, s: Space) {
+  try {
+    fs.mkdirSync(openDir(ctx), { recursive: true });
+    openNote = path.join(openDir(ctx), `${ensureId(s).replace(/[^\w.-]/g, '_')}.json`);
+    const write = () => { try { fs.writeFileSync(openNote!, JSON.stringify({ pid: process.pid, file: s.file, at: Date.now() }), 'utf8'); } catch { /* next time */ } };
+    write();
+    // refreshed every minute: a note older than 3 minutes is stale (process ids get reused)
+    const t = setInterval(write, 60000); t.unref?.();
+    ctx.subscriptions.push({ dispose: () => clearInterval(t) });
+  } catch (e: any) { log(`open note: ${e.message}`); }
+}
+function unmarkOpen() {
+  try { if (openNote && JSON.parse(fs.readFileSync(openNote, 'utf8')).pid === process.pid) fs.unlinkSync(openNote); } catch { /* gone already */ }
+}
+function isOpenElsewhere(ctx: vscode.ExtensionContext, s: Space): boolean {
+  if (!s.id) return false;
+  try {
+    const n = JSON.parse(fs.readFileSync(path.join(openDir(ctx), `${s.id.replace(/[^\w.-]/g, '_')}.json`), 'utf8'));
+    if (typeof n.pid !== 'number' || n.pid === process.pid) return false;
+    if (typeof n.at !== 'number' || Date.now() - n.at > 180000) return false;
+    process.kill(n.pid, 0);   // throws when no such process
+    return true;
+  } catch { return false; }
+}
 
 // changes that need a new taskbar icon
 function iconKey(s: Space | undefined): string {
@@ -676,6 +708,8 @@ async function openGroup(ctx: vscode.ExtensionContext, group?: Group) {
     const s = memberSpace(m, spaces);
     if (!s) { log(`group ${group.name}: a space is missing (${m.file || m.id})`); continue; }
     if (here && sameFile(here.file, s.file)) continue;
+    // already open in its own window: the signal brings it forward to its spot (opening it again replaced the window)
+    if (isOpenElsewhere(ctx, s)) { log(`group ${group.name}: ${s.name} is open already`); continue; }
     await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(s.file), { forceNewWindow: true });
   }
   // and this window starts the programs and opens the files and pages, once
