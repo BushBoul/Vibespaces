@@ -12,3 +12,5 @@ node_modules/@vscode/codicons/**
 tools/**
 # the helper ships as the built program, not its source
 helper/*.cs
+# README pictures (the Marketplace reads them from GitHub)
+docs/**
