@@ -4,8 +4,6 @@
 
 ![Four AI agents working on one project, each in its own coloured VS Code window, put in place with one shortcut](docs/demo.gif)
 
-<!-- TOUR VIDEO: on github.com, edit this file and drag vibespaces-tour-1080p.mp4 onto this line; GitHub swaps in a player. -->
-
 If you work on several projects, VS Code windows look alike and all pile up under one blue taskbar icon.
 Vibespaces turns each project into a **space**:
 
@@ -17,6 +15,9 @@ No files to edit: everything has a button or a form.
 
 ![Four projects open side by side, each window in its own colour with its own AI assistant, and a coloured taskbar button for each](docs/spaces.webp)
 *Every project in its own colour, with its own taskbar button and its own assistant.*
+
+![Eleven taskbar buttons in a row, each a different colour with the project's initials](docs/taskbar.png)
+*On Windows every space gets its own taskbar button. Right-click one and pin it to open that project in one click.*
 
 ![One project split across four windows in a group: a lead agent planning, and three helpers working on the front end, back end and tests](docs/agents.webp)
 *A group: one project, four agents side by side, each window in its spot.*
