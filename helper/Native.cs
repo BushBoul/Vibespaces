@@ -60,12 +60,22 @@ namespace Vibespaces {
 
   // A pinned space keeps the icon it was pinned with: Windows saves a shortcut for the pin and reuses it when the
   // same taskbar id is pinned again. So when a space's icon changes, the saved pins with its id get the new icon.
+  // The shortcut also holds what the pin starts (VS Code + the space's file): a renamed space has a new file, so the
+  // pins get the new command too. Without that the pin starts VS Code with a file that's gone, which only brings
+  // an open VS Code window forward.
   public static class Pins {
     [DllImport("ole32.dll")] static extern int PropVariantClear(ref PropVariant v);
     [DllImport("shell32.dll")] static extern void SHChangeNotify(int e, uint flags, IntPtr a, IntPtr b);
 
-    // icon: "path" or "path,index"; returns how many pins it changed
-    public static int Update(string appId, string icon) {
+    // icon: "path" or "path,index"; command: "program" arguments, or "" to leave what the pin starts alone;
+    // returns how many pins it changed
+    public static int Update(string appId, string icon, string command) {
+      string exe = "", args = "";
+      command = (command ?? "").Trim();
+      if (command.StartsWith("\"")) {
+        int q = command.IndexOf('"', 1);
+        if (q > 1) { exe = command.Substring(1, q - 1); args = command.Substring(q + 1).Trim(); }
+      }
       string path = icon; int index = 0;
       int comma = icon.LastIndexOf(',');
       if (comma > 0 && int.TryParse(icon.Substring(comma + 1), out index)) path = icon.Substring(0, comma);
@@ -86,9 +96,17 @@ namespace Vibespaces {
           if (id != appId) continue;
           IShellLinkW l = (IShellLinkW)o;
           StringBuilder sb = new StringBuilder(1024); int had;
+          bool changed = false;
           l.GetIconLocation(sb, sb.Capacity, out had);
-          if (string.Equals(sb.ToString(), path, StringComparison.OrdinalIgnoreCase) && had == index) continue;
-          l.SetIconLocation(path, index);
+          if (!(string.Equals(sb.ToString(), path, StringComparison.OrdinalIgnoreCase) && had == index)) { l.SetIconLocation(path, index); changed = true; }
+          if (exe != "") {
+            StringBuilder pb = new StringBuilder(1024), ab = new StringBuilder(2048);
+            l.GetPath(pb, pb.Capacity, IntPtr.Zero, 0);
+            l.GetArguments(ab, ab.Capacity);
+            if (!string.Equals(pb.ToString(), exe, StringComparison.OrdinalIgnoreCase)) { l.SetPath(exe); l.SetWorkingDirectory(Path.GetDirectoryName(exe)); changed = true; }
+            if (!string.Equals(ab.ToString().Trim(), args, StringComparison.OrdinalIgnoreCase)) { l.SetArguments(args); changed = true; }
+          }
+          if (!changed) continue;
           ((System.Runtime.InteropServices.ComTypes.IPersistFile)o).Save(f, true);
           n++;
         } catch {
@@ -127,13 +145,13 @@ namespace Vibespaces {
         if (h == IntPtr.Zero) Thread.Sleep(500);
       }
       if (h == IntPtr.Zero) return "no window titled '" + title + "' in process " + processId;
-      int pins = Pins.Update(appId, icon);
+      int pins = Pins.Update(appId, icon, command);
       string pinNote = pins > 0 ? " (updated " + pins + " pin" + (pins == 1 ? "" : "s") + ")" : "";
       IPropertyStore s = Store(h);
       try {
         string had = Get(s, ID);
         // already this space's: done, unless its icon is an old one (a new icon design, say)
-        if (had == appId && !force && Get(s, RELAUNCH_ICON) == icon) return "already " + appId + pinNote;
+        if (had == appId && !force && Get(s, RELAUNCH_ICON) == icon && Get(s, RELAUNCH_COMMAND) == command) return "already " + appId + pinNote;
         Set(s, RELAUNCH_COMMAND, command);
         Set(s, RELAUNCH_ICON, icon);
         Set(s, RELAUNCH_NAME, name);
