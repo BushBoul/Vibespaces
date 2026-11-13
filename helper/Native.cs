@@ -223,6 +223,119 @@ namespace Vibespaces {
     }
   }
 
+  // The screens, for a space that lives on one of them. Each has an id that stays with the monitor and the port it's
+  // plugged into (the display path Windows keeps for it), its own name ("DELL U2720Q"), and its place left to right.
+  public class Screen {
+    public string Id, Name, Device; public bool Primary; public int Index;
+    public int L, T, R, B;           // the whole screen
+    public int WL, WT, WR, WB;       // its work area (the screen minus the taskbar)
+  }
+
+  public static class Screens {
+    [StructLayout(LayoutKind.Sequential)] struct RECT { public int Left, Top, Right, Bottom; }
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    struct MONITORINFOEX { public int cbSize; public RECT rcMonitor; public RECT rcWork; public uint dwFlags;
+      [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string szDevice; }
+    delegate bool MonitorProc(IntPtr mon, IntPtr hdc, ref RECT r, IntPtr data);
+    [DllImport("user32.dll")] static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr clip, MonitorProc f, IntPtr data);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern bool GetMonitorInfo(IntPtr mon, ref MONITORINFOEX mi);
+    [DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr ctx);
+
+    // QueryDisplayConfig: the monitors' own names and lasting paths
+    [StructLayout(LayoutKind.Sequential)] struct LUID { public uint Low; public int High; }
+    [StructLayout(LayoutKind.Sequential)] struct PATH_SOURCE { public LUID adapter; public uint id, modeIdx, status; }
+    [StructLayout(LayoutKind.Sequential)] struct PATH_TARGET { public LUID adapter; public uint id, modeIdx, tech, rotation, scaling, rateN, rateD, scan; public int available; public uint status; }
+    [StructLayout(LayoutKind.Sequential)] struct PATH_INFO { public PATH_SOURCE src; public PATH_TARGET tgt; public uint flags; }
+    [StructLayout(LayoutKind.Sequential, Size = 64)] struct MODE_INFO { public uint type, id; public LUID adapter; }
+    [StructLayout(LayoutKind.Sequential)] struct HEADER { public uint type, size; public LUID adapter; public uint id; }
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    struct TARGET_NAME { public HEADER h; public uint flags, tech; public ushort maker, product; public uint connector;
+      [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)] public string friendly;
+      [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string path; }
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    struct SOURCE_NAME { public HEADER h; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string gdi; }
+    [DllImport("user32.dll")] static extern int GetDisplayConfigBufferSizes(uint flags, out uint paths, out uint modes);
+    [DllImport("user32.dll")] static extern int QueryDisplayConfig(uint flags, ref uint np, [Out] PATH_INFO[] p, ref uint nm, [Out] MODE_INFO[] m, IntPtr topo);
+    [DllImport("user32.dll")] static extern int DisplayConfigGetDeviceInfo(ref TARGET_NAME r);
+    [DllImport("user32.dll")] static extern int DisplayConfigGetDeviceInfo(ref SOURCE_NAME r);
+
+    // "\\.\DISPLAY1" -> [name, lasting path]
+    static Dictionary<string, string[]> Names() {
+      Dictionary<string, string[]> d = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
+      try {
+        uint np, nm;
+        if (GetDisplayConfigBufferSizes(2, out np, out nm) != 0) return d;          // QDC_ONLY_ACTIVE_PATHS
+        PATH_INFO[] p = new PATH_INFO[np]; MODE_INFO[] m = new MODE_INFO[nm];
+        if (QueryDisplayConfig(2, ref np, p, ref nm, m, IntPtr.Zero) != 0) return d;
+        for (int i = 0; i < np; i++) {
+          SOURCE_NAME sn = new SOURCE_NAME();
+          sn.h.type = 1; sn.h.size = (uint)Marshal.SizeOf(typeof(SOURCE_NAME)); sn.h.adapter = p[i].src.adapter; sn.h.id = p[i].src.id;
+          if (DisplayConfigGetDeviceInfo(ref sn) != 0 || d.ContainsKey(sn.gdi)) continue;   // a mirrored screen: the first
+          TARGET_NAME tn = new TARGET_NAME();
+          tn.h.type = 2; tn.h.size = (uint)Marshal.SizeOf(typeof(TARGET_NAME)); tn.h.adapter = p[i].tgt.adapter; tn.h.id = p[i].tgt.id;
+          if (DisplayConfigGetDeviceInfo(ref tn) != 0) continue;
+          d[sn.gdi] = new string[] { tn.friendly ?? "", tn.path ?? "" };
+        }
+      } catch { }
+      return d;
+    }
+
+    // every screen, numbered left to right (then top to bottom)
+    public static List<Screen> All() {
+      SetThreadDpiAwarenessContext(new IntPtr(-4));   // PER_MONITOR_AWARE_V2: real pixels, as the window moves use
+      List<Screen> list = new List<Screen>();
+      Dictionary<string, string[]> names = Names();
+      EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, delegate (IntPtr mon, IntPtr hdc, ref RECT r, IntPtr data) {
+        MONITORINFOEX mi = new MONITORINFOEX(); mi.cbSize = Marshal.SizeOf(typeof(MONITORINFOEX));
+        if (!GetMonitorInfo(mon, ref mi)) return true;
+        string[] n; names.TryGetValue(mi.szDevice ?? "", out n);
+        Screen s = new Screen();
+        s.Device = mi.szDevice ?? "";
+        s.Name = n != null && n[0] != "" ? n[0] : "";
+        s.Id = n != null && n[1] != "" ? n[1] : s.Device;
+        s.Primary = (mi.dwFlags & 1) != 0;
+        s.L = mi.rcMonitor.Left; s.T = mi.rcMonitor.Top; s.R = mi.rcMonitor.Right; s.B = mi.rcMonitor.Bottom;
+        s.WL = mi.rcWork.Left; s.WT = mi.rcWork.Top; s.WR = mi.rcWork.Right; s.WB = mi.rcWork.Bottom;
+        list.Add(s);
+        return true;
+      }, IntPtr.Zero);
+      list.Sort(delegate (Screen a, Screen b) { return a.L != b.L ? a.L.CompareTo(b.L) : a.T.CompareTo(b.T); });
+      for (int i = 0; i < list.Count; i++) list[i].Index = i + 1;
+      return list;
+    }
+
+    // the screen a space asked for: by its lasting id, else by its number; null: not there (stay on its own)
+    public static Screen Find(string id, int index) {
+      List<Screen> all = All();
+      if (!string.IsNullOrEmpty(id)) foreach (Screen s in all) if (string.Equals(s.Id, id, StringComparison.OrdinalIgnoreCase)) return s;
+      if (index >= 1 && index <= all.Count) return all[index - 1];
+      return null;
+    }
+
+    static string Q(string v) {
+      StringBuilder b = new StringBuilder("\"");
+      foreach (char c in v ?? "") {
+        if (c == '"' || c == '\\') b.Append('\\').Append(c);
+        else if (c < ' ') b.Append("\\u").Append(((int)c).ToString("x4"));
+        else b.Append(c);
+      }
+      return b.Append('"').ToString();
+    }
+
+    public static string Json() {
+      StringBuilder b = new StringBuilder("[");
+      List<Screen> all = All();
+      for (int i = 0; i < all.Count; i++) {
+        Screen s = all[i];
+        if (i > 0) b.Append(',');
+        b.Append("{\"id\":").Append(Q(s.Id)).Append(",\"name\":").Append(Q(s.Name)).Append(",\"device\":").Append(Q(s.Device))
+          .Append(",\"index\":").Append(s.Index).Append(",\"primary\":").Append(s.Primary ? "true" : "false")
+          .Append(",\"x\":").Append(s.L).Append(",\"y\":").Append(s.T).Append(",\"width\":").Append(s.R - s.L).Append(",\"height\":").Append(s.B - s.T).Append('}');
+      }
+      return b.Append(']').ToString();
+    }
+  }
+
   // Where a space's window sits on screen: read it, and put it back. Coordinates are real pixels (per-monitor DPI
   // aware), the same ones GetWindowRect and SetWindowPos use, so a saved position round-trips on scaled screens.
   public static class Placement {
@@ -242,8 +355,8 @@ namespace Vibespaces {
     // A spot on the screen the window is on, as a share of its work area (the screen minus the taskbar).
     // The visible frame is what lines up with the screen edges: Windows' invisible resize borders sit outside it.
     // raise: also bring the window up above the others (without taking the focus), for a group coming home
-    public static string Snap(int processId, string title, string where, bool raise, bool activate) {
-      string r = Snap(processId, title, where, raise);
+    public static string Snap(int processId, string title, string where, bool raise, bool activate, string screen, int screenIndex) {
+      string r = Snap(processId, title, where, raise, screen, screenIndex);
       if (activate) { IntPtr h = Window(processId, title); if (h != IntPtr.Zero) SetForegroundWindow(h); }
       return r;
     }
@@ -254,10 +367,16 @@ namespace Vibespaces {
       return r;
     }
 
-    public static string Snap(int processId, string title, string where, bool raise) {
+    // screen / screenIndex: the screen to put it on (its lasting id, else its number left to right); none, or one
+    // that isn't connected now: the screen the window is on
+    public static string Snap(int processId, string title, string where, bool raise, string screen, int screenIndex) {
       IntPtr h = Window(processId, title);
       if (h == IntPtr.Zero) return "no window titled '" + title + "'";
-      if (where == "maximized") { ShowWindow(h, 3); if (raise) Raise(h); return "maximized"; }
+      bool asked = screen != "" || screenIndex > 0;
+      Screen to = asked ? Screens.Find(screen, screenIndex) : null;
+      string on = to != null ? " on screen " + to.Index : asked ? " (that screen isn't connected: on its own)" : "";
+      if (to != null) MoveTo(h, to);
+      if (where == "maximized") { ShowWindow(h, 3); if (raise) Raise(h); return "maximized" + on; }
       // each spot: where it starts and how much it takes, across and down, as shares of the work area
       double x0, xs, y0 = 0, ys = 1;
       switch (where) {
@@ -293,7 +412,23 @@ namespace Vibespaces {
       }
       SetWindowPos(h, IntPtr.Zero, x, y, w, height, 0x0004 | 0x0010);            // SWP_NOZORDER | SWP_NOACTIVATE
       if (raise) Raise(h);
-      return "snapped " + where + ": " + x + "," + y + " " + w + "x" + height;
+      return "snapped " + where + ": " + x + "," + y + " " + w + "x" + height + on;
+    }
+
+    // Onto another screen first, at its current size, before the spot is worked out: a screen with other scaling
+    // makes the window resize itself as it arrives, and its frame edges change, so those are read once it's there.
+    static void MoveTo(IntPtr h, Screen to) {
+      if (MonitorFromWindow(h, 2) == MonitorAt(to)) return;
+      if (IsZoomed(h) || IsIconic(h)) ShowWindow(h, 9);                          // SW_RESTORE
+      RECT win; GetWindowRect(h, out win);
+      int w = Math.Min(win.Right - win.Left, to.WR - to.WL), ht = Math.Min(win.Bottom - win.Top, to.WB - to.WT);
+      SetWindowPos(h, IntPtr.Zero, to.WL, to.WT, w, ht, 0x0004 | 0x0010);
+      Thread.Sleep(150);   // the window answers the scaling change
+    }
+
+    static IntPtr MonitorAt(Screen s) {
+      RECT r; r.Left = s.L + 1; r.Top = s.T + 1; r.Right = s.L + 2; r.Bottom = s.T + 2;
+      return MonitorFromRect(ref r, 2);
     }
 
     // up above the other windows, restored if minimized; activate: also give it the focus

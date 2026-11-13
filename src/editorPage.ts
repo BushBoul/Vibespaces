@@ -66,6 +66,9 @@ details.pgroup .items { padding: 2px 12px 8px 30px; display: grid; grid-template
 .path { word-break: break-all; }
 .full { width: 100%; }
 .tile .codicon.big { font-size: 28px; line-height: 36px; height: 36px; }
+.tile .sub { display: block; opacity: .7; font-size: 11px; }
+.screenrow { display: flex; flex-direction: column; gap: 6px; }
+.screenrow.hidden { display: none; }
 `;
 
 export const EDITOR_BODY = `
@@ -190,6 +193,7 @@ export const EDITOR_BODY = `
         <div class="field-head"><span class="label">Where it sits</span><p class="desc" id="winHint"></p></div>
         <div class="field-body">
           <div class="tiles" id="spots"></div>
+          <div class="screenrow" id="screenRow"><span class="label">On which screen</span><div class="tiles" id="screens"></div><p class="hint" id="screenHint"></p></div>
           <div class="row"><button class="ghost" id="winSave"><i class="codicon codicon-screen-normal"></i> Use where this window is now</button><span class="hint mono" id="winPos"></span></div>
           <label class="switch"><input type="checkbox" id="winAtOpen"> Also move it there when the space opens</label>
         </div>
@@ -290,6 +294,16 @@ function spotSvg(id) {
   else if (id === 'custom') inner = '<rect x="9" y="6" width="22" height="20" rx="2" fill="currentColor" fill-opacity=".6"/>';
   else inner = '<path d="M22 12 l12 10 M34 12 l-12 10" stroke="currentColor" stroke-opacity=".45" stroke-width="1.5"/>';
   return '<svg viewBox="0 0 56 36" aria-hidden="true">' + frame + inner + '</svg>';
+}
+// all the screens as they're laid out, with one of them filled in (none: just the outlines)
+function screensSvg(list, onId) {
+  if (!list.length) return '<svg viewBox="0 0 56 36" aria-hidden="true"><rect x="1" y="1" width="54" height="30" rx="3" fill="none" stroke="currentColor" stroke-opacity=".55"/></svg>';
+  const x0 = Math.min(...list.map((s) => s.x)), y0 = Math.min(...list.map((s) => s.y));
+  const x1 = Math.max(...list.map((s) => s.x + s.width)), y1 = Math.max(...list.map((s) => s.y + s.height));
+  const k = Math.min(52 / (x1 - x0), 32 / (y1 - y0)), ox = (56 - (x1 - x0) * k) / 2, oy = (36 - (y1 - y0) * k) / 2;
+  return '<svg viewBox="0 0 56 36" aria-hidden="true">' + list.map((s) => '<rect x="' + (ox + (s.x - x0) * k + 1) + '" y="' + (oy + (s.y - y0) * k + 1)
+    + '" width="' + Math.max(2, s.width * k - 2) + '" height="' + Math.max(2, s.height * k - 2) + '" rx="2" fill="currentColor" fill-opacity="' + (s.id === onId ? '.6' : '0')
+    + '" stroke="currentColor" stroke-opacity=".55"/>').join('') + '</svg>';
 }
 const SPOT_LABEL = { '': 'Not set', 'left-quarter': 'Quarter 1', 'second-quarter': 'Quarter 2', 'third-quarter': 'Quarter 3',
   'right-quarter': 'Quarter 4', 'left-third': 'Left third', 'middle-third': 'Middle third', 'right-third': 'Right third',
@@ -395,7 +409,17 @@ function render() {
   $('winSave').disabled = !st.isCurrent;
   $('winAtOpen').checked = !!(w && w.atOpen);
   $('winAtOpen').disabled = !w;
-  $('winHint').textContent = st.isCurrent ? 'Click a spot and the window moves there now, on whichever screen it\\'s on.' : 'Open this space to try a spot.';
+  $('winHint').textContent = st.isCurrent ? 'Click a spot and the window moves there now.' : 'Open this space to try a spot.';
+  // the screen: only with a spot (a saved position is on its screen already), and only when there's a choice
+  const scr = st.screens || [], want = w && w.preset && w.screen;
+  const gone = want && !scr.some((x) => x.id === w.screen.id);
+  $('screenRow').classList.toggle('hidden', !(w && w.preset) || (scr.length < 2 && !want));
+  $('screens').innerHTML = '<button class="tile' + (!want ? ' on' : '') + '" data-screen="">' + screensSvg(scr, '') + '<span>The one it\\'s on<span class="sub">wherever it is</span></span></button>'
+    + scr.map((x) => '<button class="tile' + (want && x.id === w.screen.id ? ' on' : '') + '" data-screen="' + esc(x.id) + '">' + screensSvg(scr, x.id)
+      + '<span>' + esc(x.name || 'Screen ' + x.index) + '<span class="sub">Screen ' + x.index + (x.primary ? ' · main' : '') + '</span></span></button>').join('')
+    + (gone ? '<button class="tile on" data-screen="' + esc(w.screen.id) + '" disabled>' + screensSvg([], '') + '<span>' + esc(w.screen.name || 'Screen ' + w.screen.index) + '<span class="sub">not connected</span></span></button>' : '');
+  $('screenHint').textContent = gone ? 'That screen isn\\'t connected now, so the window takes its spot on screen ' + w.screen.index + ' if there is one, else on the screen it\\'s on.'
+    : 'Its spot in a group goes on this screen too.';
   setSeg($('resetTabs'), o.resetTabs);
 
   // file
@@ -479,6 +503,7 @@ document.querySelectorAll('[data-lay]').forEach((el) => { el.onclick = (e) => {
   draft.layout[el.dataset.lay] = b.dataset.v; setSeg(el, b.dataset.v); saveDraft();
 }; });
 $('spots').onclick = (e) => { const b = e.target.closest('.tile'); if (b && b.dataset.spot !== 'custom') send('winPreset', { value: b.dataset.spot }); };
+$('screens').onclick = (e) => { const b = e.target.closest('.tile'); if (b && !b.disabled) send('winScreen', { id: b.dataset.screen }); };
 $('winSave').onclick = () => send('winSave');
 $('winAtOpen').onchange = () => send('winAtOpen', { on: $('winAtOpen').checked });
 $('resetTabs').onclick = (e) => { const b = e.target.closest('button'); if (b) { draft.resetTabs = b.dataset.v; setSeg($('resetTabs'), b.dataset.v); saveDraft(); } };

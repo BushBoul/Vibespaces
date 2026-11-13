@@ -12,7 +12,7 @@ import { SpaceEditor, EditorHost } from './editor';
 import { SettingsView } from './settingsView';
 import { GlobalHotkey, shortcutKey } from './hotkey';
 import {
-  Group, Launch, Member, Signal, allGroups, describeSpot, groupsOf, memberFor, memberSpace, prettyShortcut, readSignal, saveGroups,
+  Group, Launch, Member, Signal, allGroups, describeSpot, groupSpot, groupsOf, memberFor, memberSpace, prettyShortcut, readSignal, saveGroups,
   sendSignal, signalFor, signalPath, spotInSignal, terminalsInSignal,
 } from './groups';
 import { spawn } from 'child_process';
@@ -642,9 +642,7 @@ async function onSignal(sig: Signal, homeLayout = true) {
   if (!helperAvailable()) return;
   // its spot in the group as this window's settings have it (never the sender's idea of another group)
   const preset = spotInSignal(sig, s, id);
-  const spot: WindowSpot | undefined = preset
-    ? { preset, x: 0, y: 0, width: 0, height: 0, maximized: false, atOpen: true }
-    : s.onOpen.window;
+  const spot: WindowSpot | undefined = preset ? groupSpot(preset, s) : s.onOpen.window;
   const focus = sig.focus === id;
   try {
     if (spot) await placeWindow(extPath, s, spot, log, true, focus);

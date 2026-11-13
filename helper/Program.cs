@@ -3,7 +3,9 @@
 //   identify: give one VS Code window its own taskbar button
 //   where:    the window's position and size, as JSON
 //   place:    put the window at a position and size (or maximize it)
-//   snap:     put the window in a preset spot (left-quarter, right-third, center, maximized...) on its screen
+//   snap:     put the window in a preset spot (left-quarter, right-third, center, maximized...) on its screen,
+//             or on -Screen (a screen's id from screens) / -ScreenIndex (its number, left to right)
+//   screens:  the screens, as JSON: id, name, number left to right, main or not, position and size
 //   raise:    bring the window up above the others (-Raise does it with place and snap too; -Activate also focuses it)
 //   hotkey:   hold a system-wide shortcut and print "hotkey" each time it's pressed, until -OwnerPid exits
 //   pins:     point the saved taskbar pins of -AppId at -Icon and, with -Command, at what they start (identify does this too)
@@ -33,7 +35,8 @@ namespace Vibespaces {
           case "identify": r = Taskbar.Identify(n("ProcessId"), s("Title"), s("AppId"), s("Icon"), s("Command"), s("DisplayName"), on("Force")); break;
           case "where": r = Placement.Where(n("ProcessId"), s("Title")); break;
           case "place": r = Placement.Place(n("ProcessId"), s("Title"), n("X"), n("Y"), n("Width"), n("Height"), on("Maximize"), on("Raise"), on("Activate")); break;
-          case "snap": r = Placement.Snap(n("ProcessId"), s("Title"), s("Where"), on("Raise"), on("Activate")); break;
+          case "snap": r = Placement.Snap(n("ProcessId"), s("Title"), s("Where"), on("Raise"), on("Activate"), s("Screen"), n("ScreenIndex")); break;
+          case "screens": r = Screens.Json(); break;
           case "raise": r = Placement.RaiseWindow(n("ProcessId"), s("Title"), on("Activate")); break;
           case "pins": r = "updated " + Pins.Update(s("AppId"), s("Icon"), s("Command")) + " pin(s)"; break;
           case "hotkey": return Hotkey.Listen((uint)n("Mods"), (uint)n("Key"), n("OwnerPid"));

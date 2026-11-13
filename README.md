@@ -34,7 +34,8 @@ The first time Vibespaces runs, a short guide opens (**Get started with Vibespac
 3. **Pin it** (Windows). Right-click the space's taskbar button and choose **Pin to taskbar**.
 4. **Change it.** Click the gear next to a space: name, colour, folders, taskbar icon, what opens with it.
    Start from a preset (an AI assistant filling the window: Claude, Codex, Antigravity, Gemini, Grok, Copilot, Cline; or a layout; or one you saved), and put the window
-   in a column, a half or full screen, or exactly where you saved it. Moved things around? **Ctrl+Alt+Home** puts the space's
+   in a column, a half or full screen, or exactly where you saved it. With more than one screen, pick which one it
+   goes on (its spot in a group goes there too). Moved things around? **Ctrl+Alt+Home** puts the space's
    panels, layout and window position back.
 5. **Groups** (Windows). Spaces that work side by side: open them together, each in its spot, and put them all back
    with **Ctrl+Alt+Shift+Home**. Make one with the + under *Groups* in the Vibespaces side bar. Right-click a group

@@ -9,7 +9,10 @@ import {
 } from './spaces';
 import { KIND_LABEL, allPresets, deletePreset, kindOf, missing, offerInstall, presetFrom, savePreset, summary, userPresets, withPreset } from './presets';
 import { allPanels, allThemes, findPanel } from './panels';
-import { defaultIconStyle, helperAvailable, iconSource, spaceIcon } from './taskbar';
+import { ScreenInfo, defaultIconStyle, helperAvailable, iconSource, listScreens, screenRef, spaceIcon } from './taskbar';
+
+// the screens, as the helper last saw them (looked up again each time a form shows, since screens come and go)
+let screens: ScreenInfo[] = [];
 import { nonce, page, webviewRoots } from './webview';
 import { EDITOR_BODY, EDITOR_SCRIPT, EDITOR_STYLE } from './editorPage';
 
@@ -108,10 +111,23 @@ export class SpaceEditor {
         name: p.name, summary: summary(p), builtIn: !!p.builtIn, group: KIND_LABEL[kindOf(p)], missing: missing(p)?.name ?? '',
       })),
       windowPresets: WINDOW_PRESETS,
+      screens,
       isCurrent: !!here && sameFile(here.file, s.file),
       windows: helperAvailable(),
     });
     this.makeIcon(s);
+    this.lookAtScreens();
+  }
+
+  // a screen plugged in or taken away since the form last showed: show it again with the screens as they are now
+  private async lookAtScreens() {
+    if (!helperAvailable()) return;
+    try {
+      const now = await listScreens(this.host.extensionPath);
+      if (JSON.stringify(now) === JSON.stringify(screens)) return;
+      screens = now;
+      this.post();
+    } catch (e: any) { this.host.log(`screens: ${e.message}`); }
   }
 
   // the taskbar icon preview (made by the helper, so it lags the colour by a second or so)
@@ -223,11 +239,25 @@ export class SpaceEditor {
         const v = String(m.value || '');
         if (v === 'custom') break;   // the saved spot stays as it is
         const preset = WINDOW_PRESETS.find((p) => p.id === v)?.id;
-        const window = preset ? { preset, x: 0, y: 0, width: 0, height: 0, maximized: false, atOpen: s.onOpen.window?.atOpen ?? true } : undefined;
+        const old = s.onOpen.window;
+        const window = preset ? { preset, x: 0, y: 0, width: 0, height: 0, maximized: false, atOpen: old?.atOpen ?? true, ...(old?.screen ? { screen: old.screen } : {}) } : undefined;
         setOnOpen(s.file, { ...s.onOpen, window });
         this.saved();
         const here = currentSpace();
         if (preset && here && sameFile(here.file, s.file)) await this.host.placeWindow(readSpace(s.file)!);   // show it now
+        break;
+      }
+      case 'winScreen': {
+        const w = s.onOpen.window;
+        if (!w?.preset) break;   // a screen goes with a spot; a saved position is on its screen already
+        const id = String(m.id || '');
+        const to = screens.find((x) => x.id === id);
+        if (id && !to) break;
+        const { screen: _, ...rest } = w;
+        setOnOpen(s.file, { ...s.onOpen, window: to ? { ...rest, screen: screenRef(to) } : rest });
+        this.saved();
+        const here = currentSpace();
+        if (here && sameFile(here.file, s.file)) await this.host.placeWindow(readSpace(s.file)!);   // show it now
         break;
       }
       case 'applyPreset': {

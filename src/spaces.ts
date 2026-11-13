@@ -26,7 +26,8 @@ export interface OnOpen {
   url: string;
   urlIn: 'browser' | 'editor';
   // where the window goes (Windows): always on Reset Layout, and when the space opens if atOpen.
-  // Either a preset spot on whichever screen the window is on, or an exact position saved from the window.
+  // Either a preset spot (on the screen it names, else on whichever screen the window is on), or an exact position
+  // saved from the window.
   window?: WindowSpot;
   resetTabs: 'keep' | 'close';   // Reset Layout: close tabs that aren't part of the space
 }
@@ -54,12 +55,30 @@ export interface WindowSpot {
   preset?: WindowPreset;   // set: a spot on the window's screen; unset: the exact position below
   x: number; y: number; width: number; height: number; maximized: boolean;
   atOpen: boolean;
+  screen?: ScreenRef;      // with a preset: the screen it goes on (none: the one the window is on)
+}
+
+// A screen, as a space remembers it: Windows' lasting id for the monitor and its port, and its number left to right
+// and name for when that monitor isn't found (plugged into another port, say), and to show.
+export interface ScreenRef { id: string; index: number; name: string }
+
+function readScreen(v: any): ScreenRef | undefined {
+  if (!v || typeof v !== 'object' || typeof v.id !== 'string' || !v.id) return undefined;
+  const index = typeof v.index === 'number' && v.index >= 1 ? Math.round(v.index) : 0;
+  return { id: v.id, index, name: typeof v.name === 'string' ? v.name : '' };
+}
+
+export function screenLabel(r: ScreenRef): string {
+  return r.name ? `${r.name} (screen ${r.index})` : `screen ${r.index}`;
 }
 
 export function readWindow(w: any): WindowSpot | undefined {
   if (!w || typeof w !== 'object') return undefined;
   const atOpen = w.atOpen !== false;
-  if (WINDOW_PRESETS.some((p) => p.id === w.preset)) return { preset: w.preset, x: 0, y: 0, width: 0, height: 0, maximized: false, atOpen };
+  if (WINDOW_PRESETS.some((p) => p.id === w.preset)) {
+    const screen = readScreen(w.screen);
+    return { preset: w.preset, x: 0, y: 0, width: 0, height: 0, maximized: false, atOpen, ...(screen ? { screen } : {}) };
+  }
   const n = (v: unknown) => (typeof v === 'number' && isFinite(v) ? Math.round(v) : NaN);
   const p = { x: n(w.x), y: n(w.y), width: n(w.width), height: n(w.height) };
   if (Object.values(p).some(isNaN) || p.width < 100 || p.height < 100) return undefined;
@@ -68,7 +87,7 @@ export function readWindow(w: any): WindowSpot | undefined {
 
 // what goes in the file: a preset spot is just its name
 function windowOut(w: WindowSpot): Record<string, unknown> {
-  return w.preset ? { preset: w.preset, atOpen: w.atOpen } : { x: w.x, y: w.y, width: w.width, height: w.height, maximized: w.maximized, atOpen: w.atOpen };
+  return w.preset ? { preset: w.preset, ...(w.screen ? { screen: w.screen } : {}), atOpen: w.atOpen } : { x: w.x, y: w.y, width: w.width, height: w.height, maximized: w.maximized, atOpen: w.atOpen };
 }
 
 export interface Space {

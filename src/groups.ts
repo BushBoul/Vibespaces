@@ -8,7 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
-import { Space, WINDOW_PRESETS, WindowPreset, WindowSpot, ensureId, listSpaces, sameFile } from './spaces';
+import { Space, WINDOW_PRESETS, WindowPreset, WindowSpot, ensureId, listSpaces, sameFile, screenLabel } from './spaces';
 
 export interface Member { id: string; file: string; spot?: WindowPreset }
 // What a group starts when you OPEN it (never when it's only put back in place). A space opened on its own stays
@@ -69,18 +69,24 @@ export function groupsOf(space: Space): Group[] {
   return allGroups().filter((g) => g.members.some((m) => (m.id && m.id === space.id) || (m.file && sameFile(m.file, space.file))));
 }
 
-// where a member goes: the group's spot for it, or the space's own
+// where a member goes: the group's spot for it (on the space's own screen, if it has one), or the space's own
 export function spotFor(m: Member, space: Space | undefined): WindowSpot | undefined {
-  if (m.spot) return { preset: m.spot, x: 0, y: 0, width: 0, height: 0, maximized: false, atOpen: true };
+  if (m.spot) return groupSpot(m.spot, space);
   return space?.onOpen.window;
+}
+
+export function groupSpot(preset: WindowPreset, space: Space | undefined): WindowSpot {
+  const screen = space?.onOpen.window?.screen;
+  return { preset, x: 0, y: 0, width: 0, height: 0, maximized: false, atOpen: true, ...(screen ? { screen } : {}) };
 }
 
 export function describeSpot(m: Member, space: Space | undefined): string {
   const label = (id: string) => WINDOW_PRESETS.find((p) => p.id === id)?.label ?? id;
-  if (m.spot) return label(m.spot);
   const w = space?.onOpen.window;
+  const on = w?.screen ? ` on ${screenLabel(w.screen)}` : '';
+  if (m.spot) return label(m.spot) + on;
   if (!w) return 'its own spot (none set: stays where it is)';
-  return `its own spot (${w.preset ? label(w.preset) : 'where it was saved'})`;
+  return `its own spot (${w.preset ? label(w.preset) + on : 'where it was saved'})`;
 }
 
 // ---- the signal every window watches ----

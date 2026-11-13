@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { execFile } from 'child_process';
 import * as vscode from 'vscode';
-import { IconStyle, Space, ensureId, initials, spacesFolder } from './spaces';
+import { IconStyle, ScreenRef, Space, ensureId, initials, spacesFolder } from './spaces';
 
 export function helperAvailable(): boolean {
   return process.platform === 'win32';
@@ -75,6 +75,19 @@ export async function spaceIcon(extPath: string, space: Space, log: (m: string) 
 
 export interface WindowPos { x: number; y: number; width: number; height: number; maximized: boolean }
 
+// the screens now, numbered left to right
+export interface ScreenInfo { id: string; name: string; index: number; primary: boolean; x: number; y: number; width: number; height: number }
+
+export async function listScreens(extPath: string): Promise<ScreenInfo[]> {
+  if (!helperAvailable()) return [];
+  const list = JSON.parse(await runHelper(extPath, ['-Action', 'screens'], 15000));
+  return Array.isArray(list) ? list : [];
+}
+
+export function screenRef(s: ScreenInfo): ScreenRef {
+  return { id: s.id, index: s.index, name: s.name };
+}
+
 // where this space's window is on screen now
 export async function whereWindow(extPath: string, space: Space): Promise<WindowPos> {
   const out = await runHelper(extPath, ['-Action', 'where', '-ProcessId', String(process.ppid), '-Title', space.name]);
@@ -84,10 +97,11 @@ export async function whereWindow(extPath: string, space: Space): Promise<Window
 }
 
 // raise: also bring it up above the other windows (a group coming home); activate: and give it the focus
-export async function placeWindow(extPath: string, space: Space, p: WindowPos & { preset?: string }, log: (m: string) => void, raise = false, activate = false): Promise<void> {
+export async function placeWindow(extPath: string, space: Space, p: WindowPos & { preset?: string; screen?: ScreenRef }, log: (m: string) => void, raise = false, activate = false): Promise<void> {
   const r = [...(raise ? ['-Raise'] : []), ...(activate ? ['-Activate'] : [])];
   if (p.preset) {
-    log(`window: ${await runHelper(extPath, ['-Action', 'snap', '-ProcessId', String(process.ppid), '-Title', space.name, '-Where', p.preset, ...r])}`);
+    const on = p.screen ? ['-Screen', p.screen.id, '-ScreenIndex', String(p.screen.index)] : [];
+    log(`window: ${await runHelper(extPath, ['-Action', 'snap', '-ProcessId', String(process.ppid), '-Title', space.name, '-Where', p.preset, ...on, ...r])}`);
     return;
   }
   const args = ['-Action', 'place', '-ProcessId', String(process.ppid), '-Title', space.name,
