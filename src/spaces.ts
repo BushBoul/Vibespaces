@@ -14,7 +14,10 @@ import * as vscode from 'vscode';
 import { applyEdits, modify, parse, JSONPath } from 'jsonc-parser';
 
 // window: a little app window in the colour (default); vscode (opt-in): the user's own VS Code logo, recoloured
-export type IconStyle = 'window' | 'initials' | 'image' | 'vscode';
+// windowInitials / windowV: an outlined, see-through window with the space's initials or the Vibespaces V inside
+export const ICON_STYLES = ['window', 'windowInitials', 'windowV', 'initials', 'image', 'vscode'] as const;
+export type IconStyle = typeof ICON_STYLES[number];
+export const isIconStyle = (v: unknown): v is IconStyle => ICON_STYLES.includes(v as IconStyle);
 
 export type Show = '' | 'show' | 'hide';
 
@@ -103,14 +106,20 @@ export interface Space {
 }
 
 export const PRESETS: { label: string; color: string }[] = [
-  { label: 'Blue', color: '#1f3a5f' },
-  { label: 'Green', color: '#2e7d46' },
-  { label: 'Purple', color: '#5e3a8c' },
-  { label: 'Red', color: '#9b2c3a' },
-  { label: 'Orange', color: '#b35c1e' },
-  { label: 'Teal', color: '#1f6f73' },
-  { label: 'Gold', color: '#8a6d12' },
-  { label: 'Slate', color: '#46505e' },
+  // round the colour wheel, each at its own lightness as well as its own hue, so no two look alike, also to people
+  // with red-green colour blindness; the light ones get dark text (textColorFor)
+  { label: 'Red', color: '#b32228' },
+  { label: 'Orange', color: '#d96604' },
+  { label: 'Amber', color: '#edb333' },
+  { label: 'Lime', color: '#7fb125' },
+  { label: 'Green', color: '#017137' },
+  { label: 'Teal', color: '#0c9a92' },
+  { label: 'Sky', color: '#46b1e3' },
+  { label: 'Blue', color: '#2c5dbd' },
+  { label: 'Indigo', color: '#3a3289' },
+  { label: 'Violet', color: '#9658c6' },
+  { label: 'Rose', color: '#df5e97' },
+  { label: 'Slate', color: '#485460' },
 ];
 
 const FMT = { formattingOptions: { insertSpaces: true, tabSize: 2 } };
@@ -223,7 +232,7 @@ export function readSpace(file: string): Space | undefined {
     id: typeof s['vibespaces.id'] === 'string' && s['vibespaces.id'] ? s['vibespaces.id'] : undefined,
     color: color?.slice(0, 7).toLowerCase(),
     folders,
-    iconStyle: style === 'window' || style === 'vscode' || style === 'initials' || style === 'image' ? style : undefined,
+    iconStyle: isIconStyle(style) ? style : undefined,
     iconImage: typeof s['vibespaces.iconImage'] === 'string' && s['vibespaces.iconImage'] ? s['vibespaces.iconImage'] : undefined,
     theme: typeof s['workbench.colorTheme'] === 'string' && s['workbench.colorTheme'] ? s['workbench.colorTheme'] : undefined,
     onOpen: readOnOpen(onOpen),

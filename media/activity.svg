@@ -1,6 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#c5c5c5">
-  <rect x="3" y="3" width="8" height="8" rx="2"/>
-  <rect x="13" y="3" width="8" height="8" rx="2" fill-opacity="0.55"/>
-  <rect x="3" y="13" width="8" height="8" rx="2" fill-opacity="0.55"/>
-  <rect x="13" y="13" width="8" height="8" rx="2"/>
+  <!-- three windows fanned out, the front one with its title bar and the V: the logo in one colour -->
+  <defs>
+    <mask id="behind">
+      <rect width="24" height="24" fill="#fff"/>
+      <rect x="5.5" y="5.5" width="18.5" height="18.5" rx="3.5" fill="#000"/>
+    </mask>
+  </defs>
+  <g mask="url(#behind)" fill="none" stroke="#c5c5c5" stroke-width="1.5">
+    <rect x="1.75" y="1.75" width="14" height="14" rx="2.25"/>
+    <rect x="4.75" y="4.75" width="14" height="14" rx="2.25"/>
+  </g>
+  <rect x="7.75" y="7.75" width="14" height="14" rx="2.25" fill="none" stroke="#c5c5c5" stroke-width="1.5"/>
+  <path d="M9.25 7h10.5a2.25 2.25 0 0 1 2.25 2.25V10.5H7V9.25A2.25 2.25 0 0 1 9.25 7z"/>
+  <path d="M10.6 12.2h2.1l2.05 5.05 2.05-5.05h2.1l-3.25 7.55h-1.8z"/>
 </svg>

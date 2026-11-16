@@ -544,7 +544,8 @@ namespace Vibespaces {
       Bitmap logo = style == "vscode" ? Tint(LoadLargest(source), c) : style == "image" ? LoadPicture(source) : null;
       List<byte[]> pngs = new List<byte[]>();
       foreach (int s in Sizes) {
-        using (Bitmap b = logo != null ? Resize(logo, s) : style == "window" ? WindowGlyph(c, s) : Tile(c, text, s)) pngs.Add(Png(b));
+        using (Bitmap b = logo != null ? Resize(logo, s) : style == "window" ? WindowGlyph(c, s)
+            : style == "windowInitials" ? Framed(c, text, s, false) : style == "windowV" ? Framed(c, null, s, true) : Tile(c, text, s)) pngs.Add(Png(b));
       }
       if (logo != null) logo.Dispose();
       WriteIco(outPath, pngs);
@@ -651,6 +652,65 @@ namespace Vibespaces {
         }
       }
       return b;
+    }
+
+    // "windowInitials" / "windowV": a window drawn as an outline with a solid title bar, the space's initials or the
+    // Vibespaces V inside, all in the space's colour. See-through, so the taskbar shows behind it. Deep colours are
+    // lifted a little, so they still read on a dark taskbar.
+    static readonly PointF[] V = { new PointF(10, 16), new PointF(36, 16), new PointF(64, 82), new PointF(92, 16),
+      new PointF(118, 16), new PointF(76, 114), new PointF(52, 114) };
+
+    static Bitmap Framed(Color c0, string text, int s, bool v) {
+      Color c = Lift(c0);
+      Bitmap b = new Bitmap(s, s, PixelFormat.Format32bppArgb);
+      using (Graphics g = Graphics.FromImage(b))
+      using (SolidBrush br = new SolidBrush(c)) {
+        Quality(g);
+        float u = s / 128f;
+        RectangleF o = new RectangleF(6 * u, 8 * u, 116 * u, 112 * u);
+        float t = Math.Max(1.5f, 8 * u), bar = Math.Max(3f, 26 * u), rad = 16 * u;
+        using (GraphicsPath outer = Rounded(o, rad)) {
+          g.SetClip(outer);
+          g.FillRectangle(br, o.X, o.Y, o.Width, bar);
+          g.ResetClip();
+        }
+        using (GraphicsPath lp = Rounded(new RectangleF(o.X + t / 2, o.Y + t / 2, o.Width - t, o.Height - t), Math.Max(1f, rad - t / 2)))
+        using (Pen pen = new Pen(c, t)) g.DrawPath(pen, lp);
+
+        // what goes inside, fitted to the space under the title bar
+        RectangleF inner = new RectangleF(o.X + t, o.Y + bar, o.Width - 2 * t, o.Bottom - t - (o.Y + bar));
+        using (GraphicsPath gp = new GraphicsPath()) {
+          float share;
+          if (v) { gp.AddPolygon(V); share = 0.66f; }
+          else {
+            string tx = s < 24 && text.Length > 1 ? text.Substring(0, 1) : text;
+            using (FontFamily fam = Family("Segoe UI Black", "Segoe UI"))
+            using (StringFormat sf = StringFormat.GenericTypographic) {
+              FontStyle st = fam.Name == "Segoe UI Black" ? FontStyle.Regular : FontStyle.Bold;
+              gp.AddString(tx, fam, (int)st, 100f, PointF.Empty, sf);
+            }
+            share = s < 24 ? 0.62f : 0.48f;
+          }
+          RectangleF gb = gp.GetBounds();
+          float k = Math.Min(inner.Width * 0.80f / gb.Width, inner.Height * share / gb.Height);
+          using (Matrix m = new Matrix()) {
+            m.Translate(inner.X + inner.Width / 2, inner.Y + inner.Height / 2);
+            m.Scale(k, k);
+            m.Translate(-(gb.X + gb.Width / 2), -(gb.Y + gb.Height / 2));
+            gp.Transform(m);
+          }
+          g.FillPath(br, gp);
+        }
+      }
+      return b;
+    }
+
+    // a deep colour raised to a lightness that shows on a dark taskbar; lighter ones stay as they are
+    static Color Lift(Color c) {
+      double h, s, v; ToHsv(c.R, c.G, c.B, out h, out s, out v);
+      if (v >= 0.70) return c;
+      byte R, G, B; FromHsv(h, s, 0.70, out R, out G, out B);
+      return Color.FromArgb(R, G, B);
     }
 
     // The initials tile: fills the icon, in a brightened version of the space's colour (a taskbar icon in a deep

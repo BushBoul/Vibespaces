@@ -343,7 +343,7 @@ function render() {
     b.dataset.c = p.color; b.title = p.label + ' ' + p.color; b.style.background = p.color;   // .style: the CSP blocks style="" in markup
     return b;
   }));
-  $('picker').value = s.color || '#1f3a5f';
+  $('picker').value = s.color || '#2c5dbd';
   if (!typing($('hex'))) $('hex').value = s.color;
   paintPreview(st.keys || {});
   $('theme').innerHTML = '<option value="">Same as my other windows</option>' + st.themes.map((t) => '<option value="' + esc(t) + '">' + esc(t) + '</option>').join('');
@@ -355,10 +355,12 @@ function render() {
 
   // taskbar
   $('sec-taskbar').classList.toggle('hidden', !st.windows);
-  const styles = [['', 'Default'], ['window', 'Window'], ['initials', 'Initials'], ['image', 'My picture'], ['vscode', 'VS Code logo (opt-in)']];
+  const styles = [['', 'Default'], ['window', 'Window'], ['windowInitials', 'Window + initials'], ['windowV', 'Window + V'], ['initials', 'Initials'], ['image', 'My picture'], ['vscode', 'VS Code logo (opt-in)']];
+  const glyph = { '': 'settings', window: 'window', windowInitials: 'case-sensitive', windowV: 'browser', vscode: 'vscode', initials: 'symbol-text', image: 'file-media' };
+  const short = { window: 'window', windowInitials: 'window + initials', windowV: 'window + V', vscode: 'logo', initials: 'initials', image: 'picture' };
   $('iconTiles').innerHTML = styles.map(([v, label]) => '<button class="tile' + (v === s.iconStyle ? ' on' : '') + '" data-style="' + v + '">'
-    + (v === (s.iconStyle) && st.iconUri ? '<img src="' + st.iconUri + '" alt="">' : '<i class="codicon codicon-' + ({ '': 'settings', window: 'window', vscode: 'vscode', initials: 'symbol-text', image: 'file-media' })[v] + ' big"></i>')
-    + '<span>' + label + (v === '' ? '<br><span class="desc">(' + ({ window: 'window', vscode: 'logo', initials: 'initials', image: 'picture' })[st.defaultIconStyle] + ')</span>' : '') + '</span></button>').join('');
+    + (v === (s.iconStyle) && st.iconUri ? '<img src="' + st.iconUri + '" alt="">' : '<i class="codicon codicon-' + glyph[v] + ' big"></i>')
+    + '<span>' + label + (v === '' ? '<br><span class="desc">(' + short[st.defaultIconStyle] + ')</span>' : '') + '</span></button>').join('');
   $('imagePath').textContent = s.iconStyle === 'vscode'
     ? 'Opt-in: this recolours the icon of your own VS Code. Its brand rules do not allow modified logos, so keep it for your own use, not in screenshots you share.'
     : s.iconImage ? 'Picture: ' + s.iconImage : '';

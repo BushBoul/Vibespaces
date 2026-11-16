@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { execFile } from 'child_process';
 import * as vscode from 'vscode';
-import { IconStyle, ScreenRef, Space, ensureId, initials, spacesFolder } from './spaces';
+import { IconStyle, ScreenRef, Space, ensureId, initials, isIconStyle, spacesFolder } from './spaces';
 
 export function helperAvailable(): boolean {
   return process.platform === 'win32';
@@ -38,7 +38,7 @@ function codeIco(): string {
 
 export function defaultIconStyle(): IconStyle {
   const v = vscode.workspace.getConfiguration('vibespaces').inspect<string>('iconStyle')?.globalValue;
-  return v === 'initials' || v === 'image' || v === 'vscode' ? v : 'window';
+  return isIconStyle(v) ? v : 'window';
 }
 
 // What a space's icon is made from. A picture that's gone, or the VS Code logo in an editor that doesn't ship
@@ -68,7 +68,7 @@ export async function spaceIcon(extPath: string, space: Space, log: (m: string) 
   const args = ['-Action', 'icon', '-Style', style, '-Color', space.color, '-Out', out];
   if (style === 'vscode') args.push('-Source', codeIco());
   else if (style === 'image') args.push('-Source', image!);
-  else if (style === 'initials') args.push('-Text', initials(space.name));
+  else if (style === 'initials' || style === 'windowInitials') args.push('-Text', initials(space.name));
   log(await runHelper(extPath, args));
   return out;
 }

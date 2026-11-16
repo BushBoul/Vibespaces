@@ -84,7 +84,7 @@ except the space icons it's asked to make.
 | `vibespaces.colorTargets` | title bar, status bar | which parts are coloured |
 | `vibespaces.intensity` | `bold` | `bold` or `subtle` |
 | `vibespaces.taskbar` | on | Windows taskbar buttons per space |
-| `vibespaces.iconStyle` | `window` | `window`, `initials`, `image`, or the opt-in `vscode` (a space can override it) |
+| `vibespaces.iconStyle` | `window` | `window`, `windowInitials`, `windowV`, `initials`, `image`, or the opt-in `vscode` (a space can override it) |
 
 ### Build
 
@@ -98,8 +98,9 @@ code --install-extension vibespaces-<version>.vsix
 
 ### Icons and VS Code's logo
 
-The default taskbar icon is a little app window in the space's colour; *initials* and *your own picture* are the other
-styles. The *VS Code logo* style is opt-in: it recolours the icon of the VS Code installed on your PC, on your PC
+The default taskbar icon is a little app window in the space's colour. The other styles are *window + initials* and
+*window + V* (a see-through window outlined in the space's colour, with its initials or the Vibespaces V inside),
+*initials* and *your own picture*. The *VS Code logo* style is opt-in: it recolours the icon of the VS Code installed on your PC, on your PC
 (the logo isn't part of this extension). VS Code's [brand guidelines](https://code.visualstudio.com/brand) don't allow
 modified versions of its logo, so keep that style for your own use and out of screenshots you share. Editors that
 don't ship VS Code's icon file (Cursor, Windsurf...) fall back to the window.

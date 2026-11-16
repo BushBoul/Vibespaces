@@ -566,8 +566,8 @@ async function pickColor(current?: string): Promise<string | undefined> {
   if (!pick) return undefined;
   if (pick.color) return pick.color;
   const typed = await vscode.window.showInputBox({
-    prompt: 'Colour code, e.g. #2e7d46', value: current,
-    validateInput: (v) => (/^#?[0-9a-f]{6}$/i.test(v.trim()) ? undefined : 'Six hex digits, e.g. #2e7d46'),
+    prompt: 'Colour code, e.g. #017137', value: current,
+    validateInput: (v) => (/^#?[0-9a-f]{6}$/i.test(v.trim()) ? undefined : 'Six hex digits, e.g. #017137'),
   });
   return typed ? '#' + typed.trim().replace(/^#/, '').toLowerCase() : undefined;
 }
