@@ -442,14 +442,29 @@ namespace Vibespaces {
     }
 
     [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
+    [DllImport("user32.dll")] static extern int GetWindowLong(IntPtr h, int i);
+
+    static bool IsOnTop(IntPtr h) { return (GetWindowLong(h, -20) & 0x8) != 0; }   // GWL_EXSTYLE, WS_EX_TOPMOST
 
     // Windows won't let a program in the background simply put a window on top (HWND_TOP is quietly ignored when
     // another app is in front), but it will make a window "always on top" and back again, which leaves it on top.
+    // A window kept on top (the pin in the status bar) stays that way.
     static void Raise(IntPtr h) {
       if (IsIconic(h)) ShowWindow(h, 4);                                         // SW_SHOWNOACTIVATE
       const uint keep = 0x0001 | 0x0002 | 0x0010;                                // SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE
+      bool pinned = IsOnTop(h);
       SetWindowPos(h, new IntPtr(-1), 0, 0, 0, 0, keep);                         // HWND_TOPMOST
-      SetWindowPos(h, new IntPtr(-2), 0, 0, 0, 0, keep);                         // HWND_NOTOPMOST
+      if (!pinned) SetWindowPos(h, new IntPtr(-2), 0, 0, 0, 0, keep);            // HWND_NOTOPMOST
+    }
+
+    // Keep the window in front of other windows, or stop ("on" / "off"; anything else only asks). Prints "on" or "off".
+    public static string OnTop(int processId, string title, string set) {
+      IntPtr h = Window(processId, title);
+      if (h == IntPtr.Zero) return "no window titled '" + title + "'";
+      const uint keep = 0x0001 | 0x0002 | 0x0010;
+      if (set == "on") SetWindowPos(h, new IntPtr(-1), 0, 0, 0, 0, keep);
+      else if (set == "off") SetWindowPos(h, new IntPtr(-2), 0, 0, 0, 0, keep);
+      return IsOnTop(h) ? "on" : "off";
     }
 
     static IntPtr Window(int processId, string title) {

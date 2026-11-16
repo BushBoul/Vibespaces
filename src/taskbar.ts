@@ -110,6 +110,15 @@ export async function placeWindow(extPath: string, space: Space, p: WindowPos & 
   log(`window: ${await runHelper(extPath, args)}`);
 }
 
+// Keeps the window in front of other windows (true), stops (false), or only asks (undefined); answers how it is now.
+export async function windowOnTop(extPath: string, space: Space, set?: boolean): Promise<boolean> {
+  const args = ['-Action', 'ontop', '-ProcessId', String(process.ppid), '-Title', space.name];
+  if (set !== undefined) args.push('-Set', set ? 'on' : 'off');
+  const out = await runHelper(extPath, args, 15000);
+  if (out !== 'on' && out !== 'off') throw new Error(out);
+  return out === 'on';
+}
+
 export async function raiseWindow(extPath: string, space: Space, log: (m: string) => void, activate = false): Promise<void> {
   log(`window: ${await runHelper(extPath, ['-Action', 'raise', '-ProcessId', String(process.ppid), '-Title', space.name, ...(activate ? ['-Activate'] : [])])}`);
 }

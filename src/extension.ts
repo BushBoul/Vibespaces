@@ -7,7 +7,7 @@ import {
 } from './spaces';
 import { allPanels, findPanel, tabOpen } from './panels';
 import { KIND_LABEL, Preset, allPresets, kindOf, missing, offerInstall, summary, withPreset } from './presets';
-import { helperAvailable, identifyWindow, placeWindow, raiseWindow, whereWindow } from './taskbar';
+import { helperAvailable, identifyWindow, placeWindow, raiseWindow, whereWindow, windowOnTop } from './taskbar';
 import { SpaceEditor, EditorHost } from './editor';
 import { SettingsView } from './settingsView';
 import { GlobalHotkey, shortcutKey } from './hotkey';
@@ -36,8 +36,34 @@ export function activate(ctx: vscode.ExtensionContext) {
     status.tooltip = s ? `This window is the space "${s.name}". Click to open another space.` : 'Open a space';
     status.show();
     vscode.commands.executeCommand('setContext', 'vibespaces.isSpace', !!s);   // which button the list's title bar shows
+    paintPin();
   };
+
+  // the pin next to it: keeps this space's window in front of other windows (Windows)
+  const pin = vscode.window.createStatusBarItem('vibespaces.onTop', vscode.StatusBarAlignment.Left, 99);
+  pin.name = 'Vibespaces: Keep on Top';
+  pin.command = 'vibespaces.toggleOnTop';
+  let onTop = false;
+  function paintPin() {
+    if (!currentSpace() || !helperAvailable()) { pin.hide(); return; }
+    pin.text = onTop ? '$(pinned) On top' : '$(pin)';
+    pin.tooltip = onTop ? 'This window stays in front of other windows. Click to let other windows cover it again.'
+      : 'Keep this window in front of other windows';
+    pin.show();
+  }
+  const askOnTop = async (set?: boolean) => {
+    const s = currentSpace();
+    if (!s || !helperAvailable()) return;
+    try { onTop = await windowOnTop(extPath, s, set); } catch (e: any) { log(`on top: ${e.message}`); }
+    paintPin();
+  };
+  ctx.subscriptions.push(pin, vscode.commands.registerCommand('vibespaces.toggleOnTop', async () => {
+    if (!currentSpace()) { vscode.window.showInformationMessage('This window isn\'t a space yet. Use Make This Window a Space.'); return; }
+    if (!helperAvailable()) { vscode.window.showInformationMessage('Keeping a window on top is a Windows feature for now.'); return; }
+    await askOnTop(!onTop);
+  }));
   paintStatus();
+  askOnTop();   // after a reload the window may still be on top: ask Windows
 
   const settings = new SettingsView({ extensionUri: ctx.extensionUri, reapplyAll });
 
