@@ -639,7 +639,6 @@
         "vibespaces.iconStyle": {
           "type": "string",
           "enum": [
-            "window",
             "windowInitials",
             "windowV",
             "initials",
@@ -647,14 +646,13 @@
             "vscode"
           ],
           "enumDescriptions": [
-            "A little app window in the space’s colour",
             "A see-through window outlined in the space’s colour, with its initials inside",
             "A see-through window outlined in the space’s colour, with the Vibespaces V inside",
             "A tile in the space’s colour with its initials",
             "A picture of your own (vibespaces.iconImage)",
             "Opt-in: your installed VS Code’s own logo, recoloured on your PC. VS Code’s brand guidelines don’t allow modified versions of its logo, so keep this for your own use (not in screenshots you share)."
           ],
-          "default": "window",
+          "default": "windowInitials",
           "scope": "window",
           "markdownDescription": "Taskbar icon. Set here for all spaces; a space can choose its own in its editor."
         },

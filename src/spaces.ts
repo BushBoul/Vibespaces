@@ -13,11 +13,15 @@ import { execFileSync } from 'child_process';
 import * as vscode from 'vscode';
 import { applyEdits, modify, parse, JSONPath } from 'jsonc-parser';
 
-// window: a little app window in the colour (default); vscode (opt-in): the user's own VS Code logo, recoloured
-// windowInitials / windowV: an outlined, see-through window with the space's initials or the Vibespaces V inside
-export const ICON_STYLES = ['window', 'windowInitials', 'windowV', 'initials', 'image', 'vscode'] as const;
+// windowInitials (default) / windowV: an outlined, see-through window with the space's initials or the Vibespaces V
+// inside; initials: a filled tile; image: the user's picture; vscode (opt-in): the user's own VS Code logo, recoloured
+export const ICON_STYLES = ['windowInitials', 'windowV', 'initials', 'image', 'vscode'] as const;
 export type IconStyle = typeof ICON_STYLES[number];
-export const isIconStyle = (v: unknown): v is IconStyle => ICON_STYLES.includes(v as IconStyle);
+// a style from a file or a setting; "window" (a filled little window, before 1.4) became the window with initials
+export function iconStyleOf(v: unknown): IconStyle | undefined {
+  if (v === 'window') return 'windowInitials';
+  return ICON_STYLES.includes(v as IconStyle) ? (v as IconStyle) : undefined;
+}
 
 export type Show = '' | 'show' | 'hide';
 
@@ -232,7 +236,7 @@ export function readSpace(file: string): Space | undefined {
     id: typeof s['vibespaces.id'] === 'string' && s['vibespaces.id'] ? s['vibespaces.id'] : undefined,
     color: color?.slice(0, 7).toLowerCase(),
     folders,
-    iconStyle: isIconStyle(style) ? style : undefined,
+    iconStyle: iconStyleOf(style),
     iconImage: typeof s['vibespaces.iconImage'] === 'string' && s['vibespaces.iconImage'] ? s['vibespaces.iconImage'] : undefined,
     theme: typeof s['workbench.colorTheme'] === 'string' && s['workbench.colorTheme'] ? s['workbench.colorTheme'] : undefined,
     onOpen: readOnOpen(onOpen),

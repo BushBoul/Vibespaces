@@ -355,9 +355,9 @@ function render() {
 
   // taskbar
   $('sec-taskbar').classList.toggle('hidden', !st.windows);
-  const styles = [['', 'Default'], ['window', 'Window'], ['windowInitials', 'Window + initials'], ['windowV', 'Window + V'], ['initials', 'Initials'], ['image', 'My picture'], ['vscode', 'VS Code logo (opt-in)']];
-  const glyph = { '': 'settings', window: 'window', windowInitials: 'case-sensitive', windowV: 'browser', vscode: 'vscode', initials: 'symbol-text', image: 'file-media' };
-  const short = { window: 'window', windowInitials: 'window + initials', windowV: 'window + V', vscode: 'logo', initials: 'initials', image: 'picture' };
+  const styles = [['', 'Default'], ['windowInitials', 'Window + initials'], ['windowV', 'Window + V'], ['initials', 'Initials'], ['image', 'My picture'], ['vscode', 'VS Code logo (opt-in)']];
+  const glyph = { '': 'settings', windowInitials: 'case-sensitive', windowV: 'browser', vscode: 'vscode', initials: 'symbol-text', image: 'file-media' };
+  const short = { windowInitials: 'window + initials', windowV: 'window + V', vscode: 'logo', initials: 'initials', image: 'picture' };
   $('iconTiles').innerHTML = styles.map(([v, label]) => '<button class="tile' + (v === s.iconStyle ? ' on' : '') + '" data-style="' + v + '">'
     + (v === (s.iconStyle) && st.iconUri ? '<img src="' + st.iconUri + '" alt="">' : '<i class="codicon codicon-' + glyph[v] + ' big"></i>')
     + '<span>' + label + (v === '' ? '<br><span class="desc">(' + short[st.defaultIconStyle] + ')</span>' : '') + '</span></button>').join('');

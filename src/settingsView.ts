@@ -65,7 +65,7 @@ export class SettingsView implements vscode.WebviewViewProvider {
         await c.update('globalShortcut', m.on ? undefined : '', G);
         break;
       case 'iconStyle':
-        await c.update('iconStyle', ['windowInitials', 'windowV', 'initials', 'vscode'].includes(m.value) ? m.value : 'window', G);
+        await c.update('iconStyle', ['windowV', 'initials', 'vscode'].includes(m.value) ? m.value : 'windowInitials', G);
         break;
       case 'folder': {
         const picked = await vscode.window.showOpenDialog({
@@ -134,7 +134,7 @@ const BODY = `
     <label class="switch"><input type="checkbox" id="globalKey"> Group shortcut works from any app</label>
     <p class="desc" id="globalKeyHint"></p>
     <span class="label">Icon for new spaces</span>
-    <div class="seg stack" id="iconStyle"><button data-v="window">Window</button><button data-v="windowInitials">Window + initials</button><button data-v="windowV">Window + V</button><button data-v="initials">Initials</button><button data-v="vscode">VS Code logo</button></div>
+    <div class="seg stack" id="iconStyle"><button data-v="windowInitials">Window + initials</button><button data-v="windowV">Window + V</button><button data-v="initials">Initials</button><button data-v="vscode">VS Code logo</button></div>
     <p class="desc" id="logoNote">The VS Code logo option recolours your own VS Code's icon. VS Code's brand rules don't allow modified logos, so keep it for your own use, not in screenshots you share.</p>
   </div>
 </section>
@@ -171,7 +171,7 @@ window.addEventListener('message', (e) => {
   $('globalKeyHint').textContent = m.globalShortcut
     ? m.globalShortcut.split('+').map((k) => k.charAt(0).toUpperCase() + k.slice(1)).join('+') + ' puts your group back and brings it to the front, even from another app.'
     : 'Off: the group shortcut works only while VS Code is in front.';
-  setSeg($('iconStyle'), ['windowInitials', 'windowV', 'initials', 'vscode'].includes(m.iconStyle) ? m.iconStyle : 'window');
+  setSeg($('iconStyle'), ['windowV', 'initials', 'vscode'].includes(m.iconStyle) ? m.iconStyle : 'windowInitials');
   $('logoNote').classList.toggle('hidden', m.iconStyle !== 'vscode');
   $('win').classList.toggle('hidden', !m.windows);
   $('folder').textContent = m.folder;

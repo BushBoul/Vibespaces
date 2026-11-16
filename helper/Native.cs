@@ -537,15 +537,14 @@ namespace Vibespaces {
     static readonly int[] Sizes = { 16, 20, 24, 32, 40, 48, 64, 256 };
     const double VSCODE_HUE = 205.0;   // the logo's blue
 
-    // style "window": a little app window in the colour (the default); "initials": text is the initials;
+    // style "windowInitials" (the default) / "windowV": an outlined window; "initials": a tile; text is the initials;
     // "image": source is the user's picture; "vscode" (opt-in): source is the user's own VS Code code.ico, recoloured
     public static string Make(string style, string color, string text, string source, string outPath) {
       Color c = ColorTranslator.FromHtml(color);
       Bitmap logo = style == "vscode" ? Tint(LoadLargest(source), c) : style == "image" ? LoadPicture(source) : null;
       List<byte[]> pngs = new List<byte[]>();
       foreach (int s in Sizes) {
-        using (Bitmap b = logo != null ? Resize(logo, s) : style == "window" ? WindowGlyph(c, s)
-            : style == "windowInitials" ? Framed(c, text, s, false) : style == "windowV" ? Framed(c, null, s, true) : Tile(c, text, s)) pngs.Add(Png(b));
+        using (Bitmap b = logo != null ? Resize(logo, s) : style == "windowInitials" ? Framed(c, text, s, false) : style == "windowV" ? Framed(c, null, s, true) : Tile(c, text, s)) pngs.Add(Png(b));
       }
       if (logo != null) logo.Dispose();
       WriteIco(outPath, pngs);
@@ -609,48 +608,6 @@ namespace Vibespaces {
       }
       Marshal.Copy(px, 0, d.Scan0, n);
       b.UnlockBits(d);
-      return b;
-    }
-
-    // a little app window in the space's colour: a darker title bar, and dots and lines once there's room for them
-    static Bitmap WindowGlyph(Color c, int s) {
-      Bitmap b = new Bitmap(s, s, PixelFormat.Format32bppArgb);
-      using (Graphics g = Graphics.FromImage(b)) {
-        Quality(g);
-        float pad = s * 0.06f, w = s - 2 * pad, h = w * 0.86f, top = (s - h) / 2;
-        RectangleF r = new RectangleF(pad, top, w, h);
-        float rad = s * 0.14f, bar = h * 0.26f;
-        Color dark = Color.FromArgb(c.R * 3 / 4, c.G * 3 / 4, c.B * 3 / 4);
-        bool light = Luma(c) > 0.62;
-        Color ink = light ? Color.FromArgb(200, 30, 30, 30) : Color.FromArgb(220, 255, 255, 255);
-        using (GraphicsPath p = Rounded(r, rad)) {
-          using (SolidBrush br = new SolidBrush(c)) g.FillPath(br, p);
-          g.SetClip(p);
-          using (SolidBrush br = new SolidBrush(dark)) g.FillRectangle(br, r.X, r.Y, r.Width, bar);
-          g.ResetClip();
-        }
-        using (SolidBrush inkBr = new SolidBrush(ink)) {
-          if (s >= 40) {
-            // Windows' title bar buttons, on the right: minimize, maximize, close
-            float k = bar * 0.34f, cy = r.Y + bar / 2, gap = k * 1.25f, x = r.Right - w * 0.10f - k;
-            using (Pen pen = new Pen(ink, Math.Max(1f, s / 128f * 2.2f))) {
-              g.DrawLine(pen, x - 2 * (k + gap), cy, x - 2 * (k + gap) + k, cy);
-              g.DrawRectangle(pen, x - (k + gap), cy - k / 2, k, k);
-              g.DrawLine(pen, x, cy - k / 2, x + k, cy + k / 2);
-              g.DrawLine(pen, x, cy + k / 2, x + k, cy - k / 2);
-            }
-          }
-          if (s >= 32) {
-            float lw = h * 0.075f, x0 = r.X + w * 0.13f;
-            float[] len = { 0.62f, 0.78f, 0.46f };
-            int lines = s >= 48 ? 3 : 2;
-            for (int i = 0; i < lines; i++) {
-              float y = r.Y + bar + h * 0.16f + i * h * 0.16f;
-              using (GraphicsPath lp = Rounded(new RectangleF(x0, y, w * 0.74f * len[i], lw), lw / 2)) g.FillPath(inkBr, lp);
-            }
-          }
-        }
-      }
       return b;
     }
 
