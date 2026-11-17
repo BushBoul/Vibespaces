@@ -10,6 +10,9 @@ import { KIND_LABEL, Preset, allPresets, kindOf, missing, offerInstall, summary,
 import { helperAvailable, identifyWindow, placeWindow, raiseWindow, whereWindow, windowOnTop } from './taskbar';
 import { SpaceEditor, EditorHost } from './editor';
 import { SettingsView } from './settingsView';
+import { CheckpointsTree, SessionItem, windowFolders } from './checkpointsView';
+import { TranscriptPanel } from './transcriptView';
+import { sessionsFor } from './transcripts';
 import { GlobalHotkey, shortcutKey } from './hotkey';
 import {
   Group, Launch, Member, Signal, allGroups, describeSpot, groupSpot, groupsOf, memberFor, memberSpace, prettyShortcut, readSignal, saveGroups,
@@ -182,6 +185,21 @@ export function activate(ctx: vscode.ExtensionContext) {
   };
   watchFolder();
   ctx.subscriptions.push({ dispose: () => watchers.forEach((w) => w.dispose()) });
+
+  // checkpoints: this window's Claude Code sessions and the moments in them worth going back to
+  const checkpoints = new CheckpointsTree(() => TranscriptPanel.refreshAll());
+  const openTranscript = (item?: SessionItem) => {
+    const file = item?.session.file ?? sessionsFor(windowFolders(), 1)[0]?.file;
+    if (!file) { vscode.window.showInformationMessage('No Claude Code sessions for this window\'s folders yet.'); return; }
+    TranscriptPanel.show(ctx.extensionUri, file);
+  };
+  ctx.subscriptions.push(
+    vscode.window.registerTreeDataProvider('vibespaces.checkpoints', checkpoints), checkpoints,
+    vscode.commands.registerCommand('vibespaces.openCheckpoint', (file: string, uuid: string) => TranscriptPanel.show(ctx.extensionUri, file, uuid)),
+    vscode.commands.registerCommand('vibespaces.openTranscript', openTranscript),
+    vscode.commands.registerCommand('vibespaces.refreshCheckpoints', () => checkpoints.refresh()),
+    vscode.workspace.onDidChangeWorkspaceFolders(() => checkpoints.refresh()),
+  );
 
   // groups: the list, and the signal that tells every window to go to its spot
   ctx.subscriptions.push(

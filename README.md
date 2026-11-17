@@ -43,7 +43,13 @@ The first time Vibespaces runs, a short guide opens (**Get started with Vibespac
    and choose **Group Shortcut…** to give it its own key (say Ctrl+Alt+Shift+1), so each group comes up on its own.
    **Launches…** on the same menu has a group start things when it opens: a command in one window's terminal, a
    program, a file (an Excel sheet opens in Excel) or a web page. A space opened on its own stays light.
-6. **Settings for all spaces** are under **Settings** in the Vibespaces side bar: which parts get coloured, bold or
+6. **Checkpoints.** For long Claude Code sessions: *Checkpoints* in the Vibespaces side bar lists this window's
+   sessions and the moments worth going back to, newest first: your messages, commits, pushes, releases, test runs,
+   errors, things Claude wasn't allowed to do, questions it asked you, long pauses and the end of each reply. Click
+   one to read the transcript from there, in its own tab, which follows the session as it goes. Want Claude to mark
+   its own milestones? Ask it to write a line starting with `Checkpoint:` when it finishes a step. Vibespaces only
+   reads the session files Claude Code keeps on your PC; nothing is sent anywhere.
+7. **Settings for all spaces** are under **Settings** in the Vibespaces side bar: which parts get coloured, bold or
    subtle, and the taskbar options.
 
 Deleting a space removes only its small space file (to the Recycle Bin), never your project.
