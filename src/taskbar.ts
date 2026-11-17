@@ -53,7 +53,7 @@ export function iconSource(space: Space): { style: IconStyle; image?: string } {
   return { style };
 }
 
-const STYLE_REV: Partial<Record<IconStyle, string>> = { initials: ' v2' };
+const STYLE_REV: Partial<Record<IconStyle, string>> = { initials: ' v2', vscode: ' v2' };   // vscode v2: greys stay grey
 
 // The space's .ico, made once per name + look. Old ones are kept: a pin may still point at one.
 export async function spaceIcon(extPath: string, space: Space, log: (m: string) => void): Promise<string | undefined> {

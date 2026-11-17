@@ -587,12 +587,13 @@ namespace Vibespaces {
       return b;
     }
 
-    // turns the logo's blue to the target hue, keeping its shading; greys get a nearly grey logo
+    // turns the logo's blue to the target hue, keeping its shading, and only as colourful as the target: a slate gives
+    // a blue-grey logo, a pure grey a grey one (whose hue, 0, would otherwise tint it red)
     static Bitmap Tint(Bitmap src, Color target) {
       Bitmap b = new Bitmap(src.Width, src.Height, PixelFormat.Format32bppArgb);
       using (Graphics g = Graphics.FromImage(b)) g.DrawImage(src, 0, 0, src.Width, src.Height);
       double th, ts, tv; ToHsv(target.R, target.G, target.B, out th, out ts, out tv);
-      bool grey = ts < 0.12;
+      double colourful = Math.Min(1.0, ts / 0.75);   // the logo's own blue is about this saturated or more
       Rectangle r = new Rectangle(0, 0, b.Width, b.Height);
       BitmapData d = b.LockBits(r, ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
       int n = d.Stride * d.Height;
@@ -602,7 +603,7 @@ namespace Vibespaces {
         if (px[i + 3] == 0) continue;
         double h, s, v; ToHsv(px[i + 2], px[i + 1], px[i], out h, out s, out v);
         h = (h + th - VSCODE_HUE + 720.0) % 360.0;
-        if (grey) s *= 0.15;
+        s *= colourful;
         byte R, G, B; FromHsv(h, s, v, out R, out G, out B);
         px[i + 2] = R; px[i + 1] = G; px[i] = B;
       }
