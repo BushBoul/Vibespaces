@@ -49,6 +49,9 @@ The first time Vibespaces runs, a short guide opens (**Get started with Vibespac
    one to read the transcript from there, in its own tab, which follows the session as it goes. Want Claude to mark
    its own milestones? Ask it to write a line starting with `Checkpoint:` when it finishes a step. Vibespaces only
    reads the session files Claude Code keeps on your PC; nothing is sent anywhere.
+   **All Spaces at a Glance** (the layout button on *Spaces* or *Checkpoints*) puts every space side by side, one
+   column each in its colour: whether its Claude is working, waiting for your OK or finished, what it did last, what
+   you last asked, and its highlights (commits, releases, test runs, failures). Click any of them to read it.
 7. **Settings for all spaces** are under **Settings** in the Vibespaces side bar: which parts get coloured, bold or
    subtle, and the taskbar options.
 

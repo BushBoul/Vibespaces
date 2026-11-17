@@ -12,6 +12,7 @@ import { SpaceEditor, EditorHost } from './editor';
 import { SettingsView } from './settingsView';
 import { CheckpointsTree, SessionItem, windowFolders } from './checkpointsView';
 import { TranscriptPanel } from './transcriptView';
+import { OverviewPanel } from './overviewView';
 import { sessionsFor } from './transcripts';
 import { GlobalHotkey, shortcutKey } from './hotkey';
 import {
@@ -198,6 +199,7 @@ export function activate(ctx: vscode.ExtensionContext) {
     vscode.commands.registerCommand('vibespaces.openCheckpoint', (file: string, uuid: string) => TranscriptPanel.show(ctx.extensionUri, file, uuid)),
     vscode.commands.registerCommand('vibespaces.openTranscript', openTranscript),
     vscode.commands.registerCommand('vibespaces.refreshCheckpoints', () => checkpoints.refresh()),
+    vscode.commands.registerCommand('vibespaces.overview', () => OverviewPanel.show(ctx.extensionUri)),
     vscode.workspace.onDidChangeWorkspaceFolders(() => checkpoints.refresh()),
   );
 

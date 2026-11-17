@@ -236,6 +236,12 @@
         "title": "Refresh Checkpoints",
         "category": "Vibespaces",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "vibespaces.overview",
+        "title": "All Spaces at a Glance",
+        "category": "Vibespaces",
+        "icon": "$(layout)"
       }
     ],
     "viewsContainers": {
@@ -285,6 +291,11 @@
     ],
     "menus": {
       "view/title": [
+        {
+          "command": "vibespaces.overview",
+          "when": "view == vibespaces.checkpoints || view == vibespaces.list",
+          "group": "navigation@0"
+        },
         {
           "command": "vibespaces.openTranscript",
           "when": "view == vibespaces.checkpoints",

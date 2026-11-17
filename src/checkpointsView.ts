@@ -12,12 +12,16 @@ export const KIND_ICON: Record<Kind, [string, string?]> = {
   pause: ['clock'], agent: ['hubot'], reply: ['comment'],
 };
 
-// read sessions, shared by the list and the viewer; each one re-reads only what was added to its file
+// read sessions, shared by the list, the viewer and the overview; each one re-reads only what was added to its file
 const transcripts = new Map<string, Transcript>();
-export function transcriptFor(file: string): Transcript {
+export function transcriptOf(file: string): Transcript {
   let t = transcripts.get(file);
   if (!t) { t = new Transcript(file); transcripts.set(file, t); }
-  t.update();
+  return t;
+}
+export async function transcriptFor(file: string): Promise<Transcript> {
+  const t = transcriptOf(file);
+  await t.update();
   return t;
 }
 
@@ -95,10 +99,10 @@ export class CheckpointsTree implements vscode.TreeDataProvider<vscode.TreeItem>
 
   getTreeItem(el: vscode.TreeItem) { return el; }
 
-  getChildren(el?: vscode.TreeItem): vscode.TreeItem[] {
+  async getChildren(el?: vscode.TreeItem): Promise<vscode.TreeItem[]> {
     if (!el) return sessionsFor(windowFolders(), 6).map((s, i) => new SessionItem(s, i === 0));
     if (el instanceof SessionItem) {
-      const cps = transcriptFor(el.session.file).checkpoints();
+      const cps = (await transcriptFor(el.session.file)).checkpoints();
       return cps.slice(-MAX_SHOWN).reverse().map((c) => new CheckpointItem(el.session.file, c));
     }
     return [];
